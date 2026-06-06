@@ -46,6 +46,16 @@ npm run db:migrate   # .env.local에 SUPABASE_DB_PASSWORD 필요
 - [x] AI 작업(ai_jobs) 및 검수 로그
 - [ ] 프로덕션 배포 (Vercel) — 아래 가이드 참고
 
+## Frontend MVP ver1.5 (Stitch UI 데모)
+
+`frontend-v15/` — Vite + React, 더미 데이터 기반 UI 데모.
+
+```bash
+cd frontend-v15 && npm install && npm run dev
+```
+
+Vercel 별도 프로젝트 배포 시 **Root Directory**: `frontend-v15`
+
 ## Vercel 배포
 
 ### 1. 사전 확인

@@ -1,0 +1,46 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Noto Sans KR", ui-sans-serif, system-ui, sans-serif;
+  --color-primary: #031635;
+  --color-primary-container: #1a2b4b;
+  --color-on-primary: #ffffff;
+  --color-secondary: #0040e0;
+  --color-secondary-container: #2e5bff;
+  --color-on-secondary: #ffffff;
+  --color-surface: #fbf8fc;
+  --color-surface-bright: #fbf8fc;
+  --color-surface-container: #efedf0;
+  --color-surface-container-low: #f5f3f6;
+  --color-on-surface: #1b1b1e;
+  --color-on-surface-variant: #44474e;
+  --color-outline-variant: #c5c6cf;
+  --color-primary-fixed: #d8e2ff;
+  --color-secondary-fixed: #dde1ff;
+  --color-success: #059669;
+  --color-warning: #d97706;
+  --color-error: #ba1a1a;
+  --spacing-sidebar: 260px;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-surface);
+  color: var(--color-on-surface);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.ai-gradient-text {
+  background: linear-gradient(135deg, #031635 0%, #0040e0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.ai-glass-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 40%, transparent);
+}
