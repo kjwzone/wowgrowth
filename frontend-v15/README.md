@@ -56,4 +56,4 @@ UI 데모(`frontend-v15`)는 **별도 Vercel 프로젝트**로 배포합니다.
 3. Framework: Vite · Deploy (환경 변수 불필요)
 
 GitHub Actions 자동 배포: `.github/workflows/deploy-frontend-v15.yml`  
-(저장소 Secrets에 `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` 필요)
+(저장소 Secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` — 등록 완료)
