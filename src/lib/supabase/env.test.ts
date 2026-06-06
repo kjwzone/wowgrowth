@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  getSupabaseSetupHint,
   isProductionBuildPhase,
   isSupabaseConfigured,
   resolveSupabaseCredentials,
@@ -42,5 +43,20 @@ describe("supabase env", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "");
 
     expect(() => resolveSupabaseCredentials()).toThrow(/환경 변수가 없습니다/);
+  });
+
+  it("returns Vercel setup hint when env is missing on Vercel", () => {
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "");
+
+    expect(getSupabaseSetupHint()).toContain("Environment Variables");
+  });
+
+  it("returns local setup hint when env is missing locally", () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "");
+
+    expect(getSupabaseSetupHint()).toContain(".env.local");
   });
 });

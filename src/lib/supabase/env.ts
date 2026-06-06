@@ -79,3 +79,32 @@ export const resolveSupabaseCredentials = (): SupabaseCredentials => {
 
   throw new Error(configError);
 };
+
+export const isVercelRuntime = (): boolean => process.env.VERCEL === "1";
+
+/** 로그인/회원가입 등에서 표시할 Supabase 설정 안내 (설정 OK면 null) */
+export const getSupabaseSetupHint = (): string | null => {
+  if (isSupabaseConfigured()) {
+    return null;
+  }
+
+  const { url, anonKey } = getSupabaseEnv();
+  const missing = !url || !anonKey;
+
+  if (missing && isVercelRuntime()) {
+    return [
+      "Supabase 미연결: Vercel → Settings → Environment Variables에",
+      "NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY를 등록한 뒤 Redeploy하세요.",
+    ].join(" ");
+  }
+
+  if (missing) {
+    return [
+      "Supabase 미연결: .env.local에 NEXT_PUBLIC_SUPABASE_URL,",
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY를 설정한 뒤 npm run dev를 재시작하세요.",
+    ].join(" ");
+  }
+
+  const detail = supabaseConfigErrorMessage();
+  return detail ? `Supabase 미연결: ${detail}` : "Supabase 연결 설정을 확인하세요.";
+};

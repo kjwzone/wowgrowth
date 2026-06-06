@@ -1,21 +1,14 @@
 import Link from "next/link";
 import { AuthForm } from "@/components/auth/auth-form";
+import { SupabaseConfigBanner } from "@/components/auth/supabase-config-banner";
 import { PageCard } from "@/components/ui/page-card";
 import { signIn } from "@/lib/auth/actions";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 export default function LoginPage() {
-  const configured = isSupabaseConfigured();
-
   return (
     <main className="mx-auto max-w-md px-4 py-16">
       <PageCard title="로그인" description="이메일과 비밀번호로 로그인합니다.">
-        {!configured ? (
-          <p className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            Supabase 미연결: <code className="text-xs">.env.local</code> 설정 후 서버를
-            재시작하세요.
-          </p>
-        ) : null}
+        <SupabaseConfigBanner />
         <AuthForm
           action={signIn}
           submitLabel="로그인"
