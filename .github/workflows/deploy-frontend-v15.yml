@@ -31,14 +31,14 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Pull Vercel project settings
+        run: npx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+
       - name: Build
         run: npm run build
 
       - name: Prepare Vercel prebuilt output
         run: node scripts/prepare-vercel-output.mjs
-
-      - name: Pull Vercel project settings
-        run: npx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: Deploy prebuilt output to Vercel
         id: deploy
