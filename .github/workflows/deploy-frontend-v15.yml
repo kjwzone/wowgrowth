@@ -35,7 +35,6 @@ jobs:
           [ -z "$VERCEL_ORG_ID" ] && echo "::error::VERCEL_ORG_ID secret is empty" && missing=1
           [ -z "$VERCEL_PROJECT_ID" ] && echo "::error::VERCEL_PROJECT_ID secret is empty" && missing=1
           [ "$missing" -eq 1 ] && exit 1
-          echo "Secrets present (ORG prefix: ${VERCEL_ORG_ID:0:5}***, PROJECT: ${VERCEL_PROJECT_ID:0:8}***)"
 
       - name: Install
         run: npm ci
@@ -43,13 +42,16 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Prepare Vercel prebuilt output
+        run: node scripts/prepare-vercel-output.mjs
+
       - name: Pull Vercel project settings
         run: npx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-      - name: Deploy prebuilt dist to Vercel
+      - name: Deploy prebuilt output to Vercel
         id: deploy
         run: |
           set -euo pipefail
-          url="$(npx vercel@latest deploy dist --prod --yes --token="$VERCEL_TOKEN" 2>&1 | tee deploy.log | tail -1)"
+          url="$(npx vercel@latest deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN")"
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Production URL: $url"
