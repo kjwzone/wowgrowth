@@ -19,7 +19,7 @@ export default async function ProgramsPage() {
 
   return (
     <AppShell title="지원사업 목록" role={session.profile.role}>
-      <PageCard title="공고 목록">
+      <PageCard title={"공고 목록 ---> '기업마당' API 실시간 연동 예정"}>
         <ul className="divide-y divide-slate-100">
           {(programs ?? []).map((p) => (
             <li key={p.id} className="py-3">
