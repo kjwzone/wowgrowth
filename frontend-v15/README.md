@@ -45,3 +45,15 @@ src/
 
 디자인 토큰(남색 `#031635`, 블루 `#0040e0`, Noto Sans KR)은 Stitch 프로젝트  
 `와우그로스 AI 정부지원 플랫폼` (ID: `10651547431422235105`)에서 추출했습니다.
+
+## Vercel 배포
+
+기존 [wowgrowth.vercel.app](https://wowgrowth.vercel.app)은 **Next.js 백엔드**입니다.  
+UI 데모(`frontend-v15`)는 **별도 Vercel 프로젝트**로 배포합니다.
+
+1. [vercel.com/new](https://vercel.com/new) → `kjwzone/wowgrowth` Import
+2. **Root Directory**: `frontend-v15`
+3. Framework: Vite · Deploy (환경 변수 불필요)
+
+GitHub Actions 자동 배포: `.github/workflows/deploy-frontend-v15.yml`  
+(저장소 Secrets에 `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` 필요)
