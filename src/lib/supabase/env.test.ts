@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isSupabaseConfigured, supabaseConfigErrorMessage } from "@/lib/supabase/env";
+import {
+  isProductionBuildPhase,
+  isSupabaseConfigured,
+  resolveSupabaseCredentials,
+  supabaseConfigErrorMessage,
+} from "@/lib/supabase/env";
 
 describe("supabase env", () => {
   afterEach(() => {
@@ -21,5 +26,21 @@ describe("supabase env", () => {
     );
     expect(isSupabaseConfigured()).toBe(true);
     expect(supabaseConfigErrorMessage()).toBeNull();
+  });
+
+  it("uses build placeholder during next build without env", () => {
+    vi.stubEnv("NEXT_PHASE", "phase-production-build");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "");
+
+    expect(isProductionBuildPhase()).toBe(true);
+    expect(resolveSupabaseCredentials().isBuildPlaceholder).toBe(true);
+  });
+
+  it("throws outside build when env is missing", () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "");
+
+    expect(() => resolveSupabaseCredentials()).toThrow(/환경 변수가 없습니다/);
   });
 });

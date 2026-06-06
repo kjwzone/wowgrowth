@@ -6,6 +6,7 @@ import {
   requiresAdmin,
   requiresReviewerAccess,
 } from "@/lib/auth/paths";
+import { resolveSupabaseCredentials } from "@/lib/supabase/env";
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
@@ -13,9 +14,17 @@ export const updateSession = async (request: NextRequest) => {
   let supabaseResponse = NextResponse.next({ request });
   const pathname = request.nextUrl.pathname;
 
+  let url: string;
+  let anonKey: string;
+  try {
+    ({ url, anonKey } = resolveSupabaseCredentials());
+  } catch {
+    return supabaseResponse;
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    anonKey,
     {
       cookies: {
         getAll: () => request.cookies.getAll(),

@@ -5,6 +5,14 @@ const PLACEHOLDER_MARKERS = [
   "your-gemini-api-key",
 ] as const;
 
+/** `next build` prerender — env 미설정 시에도 빌드가 통과하도록 하는 더미 값 */
+const BUILD_PLACEHOLDER_URL = "https://build-placeholder.supabase.co";
+const BUILD_PLACEHOLDER_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1wbGFjZWhvbGRlciJ9.build";
+
+export const isProductionBuildPhase = (): boolean =>
+  process.env.NEXT_PHASE === "phase-production-build";
+
 export const getSupabaseEnv = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
@@ -27,7 +35,7 @@ export const supabaseConfigErrorMessage = (): string | null => {
   const { url, anonKey } = getSupabaseEnv();
 
   if (!url || !anonKey) {
-    return "Supabase 환경 변수가 없습니다. .env.local 파일을 확인하세요.";
+    return "Supabase 환경 변수가 없습니다. .env.local 또는 Vercel Environment Variables를 확인하세요.";
   }
 
   if (
@@ -46,4 +54,28 @@ export const supabaseConfigErrorMessage = (): string | null => {
   }
 
   return null;
+};
+
+export type SupabaseCredentials = {
+  url: string;
+  anonKey: string;
+  isBuildPlaceholder: boolean;
+};
+
+export const resolveSupabaseCredentials = (): SupabaseCredentials => {
+  const configError = supabaseConfigErrorMessage();
+  if (!configError) {
+    const { url, anonKey } = getSupabaseEnv();
+    return { url: url!, anonKey: anonKey!, isBuildPlaceholder: false };
+  }
+
+  if (isProductionBuildPhase()) {
+    return {
+      url: BUILD_PLACEHOLDER_URL,
+      anonKey: BUILD_PLACEHOLDER_ANON_KEY,
+      isBuildPlaceholder: true,
+    };
+  }
+
+  throw new Error(configError);
 };

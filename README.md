@@ -59,7 +59,7 @@ npm test
 
 1. [vercel.com/new](https://vercel.com/new) → **Import** `kjwzone/wowgrowth`
 2. Framework: **Next.js** (자동 감지)
-3. **Environment Variables** (Production·Preview·Development 모두):
+3. **Environment Variables** (Production·Preview·Development **모두** 체크):
 
 | 변수 | 필수 | 설명 |
 |------|------|------|
@@ -68,6 +68,8 @@ npm test
 | `SUPABASE_SERVICE_ROLE_KEY` | ✓ | 서버 API (service role) |
 | `GEMINI_API_KEY` | ✓ | Google AI Studio API 키 |
 | `GEMINI_MODEL` | | 기본 `gemini-2.5-flash` |
+
+> 빌드 실패 시 로그에 `Supabase 환경 변수가 없습니다`가 보이면 위 두 `NEXT_PUBLIC_*` 값이 Vercel에 등록되지 않은 것입니다. `.env.local`과 **동일한 키 이름**으로 입력하세요.
 
 > `SUPABASE_DB_PASSWORD`는 Vercel에 넣지 않습니다. DB 마이그레이션은 로컬 `npm run db:migrate` 또는 Supabase SQL Editor에서 실행.
 
