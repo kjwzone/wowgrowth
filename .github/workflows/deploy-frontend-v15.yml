@@ -8,15 +8,16 @@ on:
       - ".github/workflows/deploy-frontend-v15.yml"
   workflow_dispatch:
 
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend-v15
-    env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v4
 
@@ -26,13 +27,39 @@ jobs:
           cache: npm
           cache-dependency-path: frontend-v15/package-lock.json
 
-      - name: Install
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-
-      - name: Deploy to Vercel
+      - name: Validate secrets
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: npx vercel@latest deploy dist --prod --yes --token "$VERCEL_TOKEN"
+        run: |
+          missing=0
+          [ -z "$VERCEL_TOKEN" ] && echo "::error::VERCEL_TOKEN secret is empty" && missing=1
+          [ -z "$VERCEL_ORG_ID" ] && echo "::error::VERCEL_ORG_ID secret is empty" && missing=1
+          [ -z "$VERCEL_PROJECT_ID" ] && echo "::error::VERCEL_PROJECT_ID secret is empty" && missing=1
+          [ "$missing" -eq 1 ] && exit 1
+          case "$VERCEL_PROJECT_ID" in prj_*) ;; *)
+            echo "::warning::VERCEL_PROJECT_ID should start with prj_ (got prefix: ${VERCEL_PROJECT_ID:0:8})"
+            ;;
+          esac
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build Project Artifacts
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy Project Artifacts to Vercel
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Production URL: $url"
