@@ -7,6 +7,14 @@ import {
 } from "@/data/adminReview";
 import { matchingResults } from "@/data/matching";
 import { getProgramById, programs } from "@/data/programs";
+import {
+  completePipeline,
+  createEmptyDraft,
+  generateSectionContent,
+  getPipelineDelayMs,
+  runPipelineStep,
+} from "@/lib/business-plan-generator";
+import { getPipelineForSkill } from "@/lib/business-plan-skill";
 import type {
   AdminReviewItem,
   BusinessPlanDraft,
@@ -19,6 +27,8 @@ import type {
 } from "@/types";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+let draftCache: BusinessPlanDraft = businessPlanDraft;
 
 export const programApi = {
   list: async (): Promise<SupportProgram[]> => {
@@ -52,12 +62,46 @@ export const matchingApi = {
 export const businessPlanApi = {
   get: async (): Promise<BusinessPlanDraft> => {
     await delay(200);
-    return businessPlanDraft;
+    return draftCache;
   },
-  generateSection: async (sectionId: string): Promise<string> => {
-    await delay(1200);
-    const section = businessPlanDraft.sections.find((s) => s.id === sectionId);
-    return section?.content || "AI가 생성한 초안 내용입니다.";
+
+  /** business-plan-writer / gov-funding-plan 스킬 파이프라인 시뮬레이션 */
+  generateFullDraft: async (
+    onProgress?: (draft: BusinessPlanDraft) => void,
+  ): Promise<BusinessPlanDraft> => {
+    const programId = draftCache.programId;
+    let draft = createEmptyDraft(programId);
+    const pipeline = getPipelineForSkill(draft.skillId);
+
+    for (let i = 0; i < pipeline.length; i += 1) {
+      draft = runPipelineStep(draft, i);
+      onProgress?.(draft);
+      await delay(getPipelineDelayMs(pipeline[i]!));
+    }
+
+    draft = completePipeline(draft);
+    draftCache = draft;
+    onProgress?.(draft);
+    return draft;
+  },
+
+  /** 선택 섹션 — plan-writer / tech-writer·biz-writer 경로 */
+  generateSection: async (
+    sectionId: string,
+    onProgress?: (draft: BusinessPlanDraft) => void,
+  ): Promise<BusinessPlanDraft> => {
+    await delay(900);
+    const draft = generateSectionContent(draftCache, sectionId);
+    draftCache = {
+      ...draft,
+      activeAgent:
+        draft.skillId === "gov-funding-plan" ? "tech-writer" : "plan-writer",
+    };
+    onProgress?.(draftCache);
+    await delay(300);
+    draftCache = { ...draftCache, activeAgent: undefined };
+    onProgress?.(draftCache);
+    return draftCache;
   },
 };
 
@@ -101,4 +145,9 @@ export const authApi = {
     await delay(500);
     return { email, name, role: "user" };
   },
+};
+
+/** 테스트용 캐시 리셋 */
+export const resetBusinessPlanCache = (): void => {
+  draftCache = businessPlanDraft;
 };

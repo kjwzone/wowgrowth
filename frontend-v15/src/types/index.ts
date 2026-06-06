@@ -61,10 +61,25 @@ export type BusinessPlanSection = {
   completeness: number;
 };
 
+export type BusinessPlanSkillId = "business-plan-writer" | "gov-funding-plan";
+
+export type PipelineStepStatus = "pending" | "running" | "done";
+
+export type PipelineStep = {
+  id: string;
+  agent: string;
+  label: string;
+  status: PipelineStepStatus;
+};
+
 export type BusinessPlanDraft = {
   id: string;
   programId: string;
   programTitle: string;
+  skillId: BusinessPlanSkillId;
+  promptVersion: string;
+  pipelineSteps?: PipelineStep[];
+  activeAgent?: string;
   sections: BusinessPlanSection[];
   overallCompleteness: number;
   status: "draft" | "review" | "ready";
