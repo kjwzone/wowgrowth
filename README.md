@@ -44,7 +44,51 @@ npm run db:migrate   # .env.local에 SUPABASE_DB_PASSWORD 필요
 - [x] 기업정보·공고·추천 API
 - [x] 관리자 공고 CRUD + Gemini 메타데이터 추출
 - [x] AI 작업(ai_jobs) 및 검수 로그
-- [ ] 프로덕션 배포 (Vercel)
+- [ ] 프로덕션 배포 (Vercel) — 아래 가이드 참고
+
+## Vercel 배포
+
+### 1. 사전 확인
+
+```bash
+npm run build
+npm test
+```
+
+### 2. GitHub 연동 (권장)
+
+1. [vercel.com/new](https://vercel.com/new) → **Import** `kjwzone/wowgrowth`
+2. Framework: **Next.js** (자동 감지)
+3. **Environment Variables** (Production·Preview·Development 모두):
+
+| 변수 | 필수 | 설명 |
+|------|------|------|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✓ | Supabase Project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✓ | anon public key |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✓ | 서버 API (service role) |
+| `GEMINI_API_KEY` | ✓ | Google AI Studio API 키 |
+| `GEMINI_MODEL` | | 기본 `gemini-2.5-flash` |
+
+> `SUPABASE_DB_PASSWORD`는 Vercel에 넣지 않습니다. DB 마이그레이션은 로컬 `npm run db:migrate` 또는 Supabase SQL Editor에서 실행.
+
+4. **Deploy** 클릭
+
+### 3. Supabase Auth 설정
+
+배포 URL 확정 후 Supabase Dashboard → **Authentication → URL Configuration**:
+
+- **Site URL**: `https://<your-app>.vercel.app`
+- **Redirect URLs**에 동일 도메인 추가 (`https://<your-app>.vercel.app/**`)
+
+### 4. CLI 배포 (선택)
+
+Vercel 계정명에 한글이 있으면 CLI User-Agent 오류가 날 수 있습니다.  
+[Account Tokens](https://vercel.com/account/tokens)에서 토큰 발급 후:
+
+```powershell
+$env:VERCEL_TOKEN = "your-token"
+npx vercel deploy --prod --yes
+```
 
 ## 프로젝트 구조
 

@@ -3,6 +3,7 @@ import {
   PROMPT_VERSION,
   type BusinessPlanDraft,
 } from "@/lib/ai/schemas";
+import { selectBusinessPlanSkill } from "@/lib/ai/business-plan-skill";
 import { buildStartupInputPayload } from "@/lib/ai/business-plan-context";
 import type { BusinessPlanGenerationContext } from "@/lib/ai/business-plan-context";
 import { generateJsonWithGemini } from "@/lib/ai/generate-json";
@@ -13,11 +14,18 @@ import {
 
 export const buildBusinessPlanPrompt = (ctx: BusinessPlanGenerationContext): string => {
   const startupInput = buildStartupInputPayload(ctx);
+  const skillId = selectBusinessPlanSkill(ctx.program);
 
   return [
     STARTUP_PACKAGE_PLAN_INSTRUCTIONS,
     "",
     "---",
+    "",
+    `## 작성 정책 (Cursor Agent Skill: ${skillId})`,
+    "상세 워크플로: .cursor/skills/" + skillId + "/SKILL.md",
+    skillId === "gov-funding-plan"
+      ? "R&D형: 기술성·사업성·예산 논리를 sections에 통합 반영하되 JSON 단일 출력 유지."
+      : "통합형: business-plan-writer 빠른 경로 — 공고 분석·배점·검증 원칙 준수.",
     "",
     "## 이번 작성에 사용할 실제 입력 (startup_input)",
     JSON.stringify(startupInput, null, 2),

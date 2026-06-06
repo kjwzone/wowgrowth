@@ -16,6 +16,7 @@ export type UserDashboardSummary = {
     company_name: string;
     industry: string;
     region: string;
+    isOwnCompany: boolean;
   } | null;
   publishedPrograms: number;
   matchCount: number;
@@ -108,6 +109,27 @@ export const formatDeadlineLabel = (dateStr: string | null): string | null => {
   return null;
 };
 
+type DashboardCompanyRow = {
+  id: string;
+  company_name: string;
+  industry: string;
+  region: string;
+};
+
+export const pickDashboardCompany = (
+  ownCompany: DashboardCompanyRow | null,
+  latestPlatformCompany: DashboardCompanyRow | null,
+  isStaff: boolean,
+): (DashboardCompanyRow & { isOwnCompany: boolean }) | null => {
+  if (ownCompany) {
+    return { ...ownCompany, isOwnCompany: true };
+  }
+  if (isStaff && latestPlatformCompany) {
+    return { ...latestPlatformCompany, isOwnCompany: false };
+  }
+  return null;
+};
+
 export const fetchUserDashboardSummary = async (params: {
   userId: string;
   isStaff: boolean;
@@ -115,11 +137,27 @@ export const fetchUserDashboardSummary = async (params: {
   noStore();
   const supabase = await createClient();
 
-  const { data: company } = await supabase
+  const { data: ownCompany } = await supabase
     .from("companies")
     .select("id, company_name, industry, region, owner_id")
     .eq("owner_id", params.userId)
     .maybeSingle();
+
+  const { data: latestPlatformCompany } =
+    ownCompany || !params.isStaff
+      ? { data: null }
+      : await supabase
+          .from("companies")
+          .select("id, company_name, industry, region, owner_id")
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+  const company = pickDashboardCompany(
+    ownCompany,
+    latestPlatformCompany,
+    params.isStaff,
+  );
 
   const scopeByCompany = !params.isStaff && Boolean(company);
   const emptyCounts = !params.isStaff && !company;
@@ -220,6 +258,7 @@ export const fetchUserDashboardSummary = async (params: {
           company_name: company.company_name,
           industry: company.industry,
           region: company.region,
+          isOwnCompany: company.isOwnCompany,
         }
       : null,
     publishedPrograms: publishedRes.count ?? 0,

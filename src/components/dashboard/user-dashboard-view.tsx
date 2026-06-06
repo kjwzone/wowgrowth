@@ -115,7 +115,14 @@ export const UserDashboardView = ({
     </div>
 
     <div className="grid gap-4 lg:grid-cols-2">
-      <PageCard title="내 기업">
+      <PageCard
+        title={summary.company && !summary.company.isOwnCompany ? "등록 기업" : "내 기업"}
+        description={
+          summary.company && !summary.company.isOwnCompany
+            ? "관리자: 플랫폼에 등록된 최근 기업"
+            : undefined
+        }
+      >
         {summary.company ? (
           <div className="space-y-4">
             <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">

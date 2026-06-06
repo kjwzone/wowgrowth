@@ -11,10 +11,11 @@ describe("admin-dashboard", () => {
       { status: "published" },
       { status: "draft" },
       { status: "closed" },
+      { status: "unknown" },
     ]);
 
     expect(counts).toEqual({
-      total: 4,
+      total: 5,
       published: 2,
       draft: 1,
       closed: 1,

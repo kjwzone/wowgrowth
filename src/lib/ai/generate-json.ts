@@ -21,7 +21,7 @@ const isJsonParseError = (error: unknown): boolean => {
 
 export const generateJsonWithGemini = async <T>(params: {
   prompt: string;
-  schema: z.ZodType<T>;
+  schema: z.ZodType<T, z.ZodTypeDef, unknown>;
   invalidMessage?: string;
   maxOutputTokens?: number;
   temperature?: number;

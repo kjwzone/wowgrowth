@@ -7,9 +7,9 @@ type NavItem = { href: string; label: string };
 const userNav: NavItem[] = [
   { href: "/dashboard", label: "대시보드" },
   { href: "/company/detail", label: "기업정보" },
+  { href: "/reports/diagnosis", label: "기업진단" },
   { href: "/programs", label: "지원사업" },
   { href: "/matches", label: "추천사업" },
-  { href: "/reports/diagnosis", label: "기업진단" },
   { href: "/business-plans", label: "사업계획서" },
 ];
 

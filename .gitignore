@@ -8,3 +8,7 @@ out
 .DS_Store
 coverage
 .vercel
+_workspace/
+harness-100/
+.claude/
+*.zip

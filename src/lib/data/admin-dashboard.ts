@@ -40,14 +40,22 @@ const emptyJobCounts = (): AdminDashboardSummary["aiJobs"] => ({
   failed: 0,
 });
 
+const isProgramStatus = (value: string): value is ProgramStatus =>
+  value === "draft" || value === "published" || value === "closed";
+
+const isJobStatus = (value: string): value is JobStatus =>
+  value === "queued" ||
+  value === "running" ||
+  value === "succeeded" ||
+  value === "failed";
+
 export const countProgramStatuses = (
   rows: ReadonlyArray<{ status: string }>,
 ): ProgramStatusCounts =>
   rows.reduce<ProgramStatusCounts>(
     (acc, row) => {
-      const status = row.status as ProgramStatus;
-      if (status in acc && status !== "total") {
-        acc[status] += 1;
+      if (isProgramStatus(row.status)) {
+        acc[row.status] += 1;
       }
       acc.total += 1;
       return acc;
@@ -60,9 +68,8 @@ export const countJobStatuses = (
 ): AdminDashboardSummary["aiJobs"] =>
   rows.reduce<AdminDashboardSummary["aiJobs"]>(
     (acc, row) => {
-      const status = row.status as JobStatus;
-      if (status in acc && status !== "total") {
-        acc[status] += 1;
+      if (isJobStatus(row.status)) {
+        acc[row.status] += 1;
       }
       acc.total += 1;
       return acc;

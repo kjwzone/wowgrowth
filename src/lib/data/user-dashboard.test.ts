@@ -3,6 +3,7 @@ import {
   buildOnboardingSteps,
   formatDeadlineLabel,
   onboardingCompletionPercent,
+  pickDashboardCompany,
 } from "@/lib/data/user-dashboard";
 
 describe("user-dashboard", () => {
@@ -54,5 +55,48 @@ describe("user-dashboard", () => {
 
     expect(formatDeadlineLabel(localDate)).toBe("D-3");
     expect(formatDeadlineLabel(null)).toBeNull();
+  });
+
+  it("prefers own company over platform company for staff", () => {
+    expect(
+      pickDashboardCompany(
+        {
+          id: "own",
+          company_name: "내 회사",
+          industry: "IT",
+          region: "서울",
+        },
+        {
+          id: "latest",
+          company_name: "다른 회사",
+          industry: "제조",
+          region: "부산",
+        },
+        true,
+      ),
+    ).toEqual({
+      id: "own",
+      company_name: "내 회사",
+      industry: "IT",
+      region: "서울",
+      isOwnCompany: true,
+    });
+  });
+
+  it("falls back to latest platform company for staff without own company", () => {
+    expect(
+      pickDashboardCompany(null, {
+        id: "latest",
+        company_name: "와우그로스",
+        industry: "서비스/정보통신업",
+        region: "경기",
+      }, true),
+    ).toEqual({
+      id: "latest",
+      company_name: "와우그로스",
+      industry: "서비스/정보통신업",
+      region: "경기",
+      isOwnCompany: false,
+    });
   });
 });

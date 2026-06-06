@@ -99,7 +99,7 @@ export const extractAnnouncementMetadata = async (
   content: string,
   taskType: AiTaskType,
 ): Promise<ExtractResult> => {
-  const { data, model } = await generateJsonWithGemini({
+  const { data, model } = await generateJsonWithGemini<AnnouncementMetadata>({
     prompt: buildPrompt(content, taskType),
     schema: announcementMetadataSchema,
     invalidMessage:

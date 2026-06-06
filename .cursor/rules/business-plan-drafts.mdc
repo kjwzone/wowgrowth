@@ -1,0 +1,35 @@
+---
+description: 사업계획서 초안 작성 시 Cursor Agent Skill 워크플로 적용
+globs: src/lib/ai/business-plan*.ts,src/lib/ai/prompts/**,src/app/api/business-plans/**,src/app/business-plans/**,src/components/business-plans/**
+alwaysApply: false
+---
+
+# 사업계획서 초안 — Agent Skill 필수
+
+사업계획서 초안 생성·수정·프롬프트 변경 시 아래 스킬을 **먼저 Read**하고 따른다.
+
+## 스킬 선택
+
+`selectBusinessPlanSkill()` (`src/lib/ai/business-plan-skill.ts`) 또는 공고 특성:
+
+| 유형 | 스킬 |
+|------|------|
+| 창업패키지·보조금·통합 계획서 | `.cursor/skills/business-plan-writer/SKILL.md` |
+| TIPS·R&D·기술/사업 분리 | `.cursor/skills/gov-funding-plan/SKILL.md` |
+
+## 워크플로
+
+1. `_workspace/{business-plan|gov-funding-plan}/00_input.md`에 기업·공고·추천·진단 입력 정리
+2. 스킬 Phase 2: `Task` + subagent (`announcement-analyst`, `plan-writer` 또는 `tech-writer`/`biz-writer` 등)
+3. JSON 저장이 필요하면 `business-plan-writer/reference/output-schema.md` 준수
+
+## 앱 코드 변경 시
+
+- 단일 Gemini 호출(`generateBusinessPlanDraft`)은 **business-plan-writer 빠른 경로**
+- 스킬 본문(배점·검증·분리 작성)과 `startup-package-plan-instructions.ts` 내용이 어긋나지 않게 유지
+- `PROMPT_VERSION` 변경 시 스킬 정책 반영 여부 확인
+
+## 참고
+
+- `AGENTS.md`
+- Claude 원본 에이전트: `.claude/agents/`
