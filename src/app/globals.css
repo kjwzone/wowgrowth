@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground: #0f172a;
+  --background: #f8fafc;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* 숫자·하이픈 입력: lang=ko 환경에서 역순 표시 방지 */
+.input-ltr {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: plaintext;
+}
