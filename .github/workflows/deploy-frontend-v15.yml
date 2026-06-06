@@ -28,14 +28,6 @@ jobs:
           cache: npm
           cache-dependency-path: frontend-v15/package-lock.json
 
-      - name: Validate secrets
-        run: |
-          missing=0
-          [ -z "$VERCEL_TOKEN" ] && echo "::error::VERCEL_TOKEN secret is empty" && missing=1
-          [ -z "$VERCEL_ORG_ID" ] && echo "::error::VERCEL_ORG_ID secret is empty" && missing=1
-          [ -z "$VERCEL_PROJECT_ID" ] && echo "::error::VERCEL_PROJECT_ID secret is empty" && missing=1
-          [ "$missing" -eq 1 ] && exit 1
-
       - name: Install
         run: npm ci
 
@@ -52,6 +44,7 @@ jobs:
         id: deploy
         run: |
           set -euo pipefail
-          url="$(npx vercel@latest deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN")"
+          npx vercel@latest deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN" 2>&1 | tee deploy.log
+          url="$(tail -1 deploy.log)"
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Production URL: $url"
