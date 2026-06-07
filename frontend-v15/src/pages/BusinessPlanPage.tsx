@@ -193,8 +193,8 @@ export default function BusinessPlanPage() {
             ? "Cursor Agent Skill 파이프라인 실행 중… (공고 분석 → 작성 → 예산 → 검증)"
             : activeSection
               ? activeSection.content.trim().length < 50
-                ? `「${activeSection.title}」이 비어 있습니다. 아래 「선택 섹션 AI 생성」을 누르면 plan-writer가 해당 섹션 초안을 작성합니다.`
-                : `「${activeSection.title}」을 선택했습니다. 내용 보강·심화는 「선택 섹션 AI 생성」(plan-writer) · 전체 재작성은 「전체 사업계획서 AI 생성」을 사용하세요.`
+                ? `「${activeSection.title}」이 비어 있습니다. 아래 「선택 섹션 AI 추가 생성 (심화)」을 누르면 plan-writer가 해당 섹션 초안을 작성합니다.`
+                : `「${activeSection.title}」을 선택했습니다. 내용 보강·심화는 「선택 섹션 AI 추가 생성 (심화)」 · 전체 재작성은 「전체 사업계획서 AI 생성」을 사용하세요.`
               : "business-plan-writer 스킬 양식(7개 항목) 기준으로 초안을 생성합니다."
         }
         state={aiState}
@@ -203,7 +203,7 @@ export default function BusinessPlanPage() {
         activeAgent={draft.activeAgent}
         onGenerateFull={() => void generateFullDraft()}
         onGenerate={() => void generateSection()}
-        generateLabel="선택 섹션 AI 생성 (plan-writer)"
+        generateLabel="선택 섹션 AI 추가 생성 (심화)"
         fullGenerateLabel="전체 사업계획서 AI 생성"
       />
 
