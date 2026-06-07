@@ -10,7 +10,7 @@ export const AiAgentPanel = ({
   message,
   state = "idle",
   onGenerate,
-  generateLabel = "AI 초안 생성",
+  generateLabel = "선택 섹션 AI 생성 (plan-writer)",
   skillId,
   pipelineSteps,
   activeAgent,
