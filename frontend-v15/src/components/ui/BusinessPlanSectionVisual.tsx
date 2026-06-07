@@ -5,7 +5,9 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
+import { BudgetExecutionPlanTables } from "@/components/ui/BudgetExecutionPlanTables";
 import { TamSamSomDiagram } from "@/components/ui/TamSamSomDiagram";
+import { parseBudgetExecutionPlan } from "@/lib/budget-execution-plan-model";
 import {
   parseBulletItems,
   parseContentLines,
@@ -206,11 +208,17 @@ export const BusinessPlanSectionVisual = ({
   }
 
   if (sectionTitle.includes("사업비")) {
+    const budgetPlan = parseBudgetExecutionPlan(content);
     const budget = parsePercentages(content);
+    const notes = bullets.filter(
+      (b) => !b.startsWith("[사업비") && !b.startsWith("[비목]"),
+    );
     return (
       <div className="space-y-4">
-        {budget.length > 0 ? <BudgetPieChart data={budget} /> : null}
-        <FallbackText content={content} />
+        {budgetPlan ? <BudgetExecutionPlanTables plan={budgetPlan} /> : null}
+        {!budgetPlan && budget.length > 0 ? <BudgetPieChart data={budget} /> : null}
+        {notes.length > 0 ? <BulletCalloutList items={notes} /> : null}
+        {!budgetPlan && notes.length === 0 ? <FallbackText content={content} /> : null}
       </div>
     );
   }

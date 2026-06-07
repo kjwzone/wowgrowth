@@ -44,6 +44,14 @@ describe("business-plan-generator", () => {
     expect(section?.completeness).toBeGreaterThanOrEqual(85);
   });
 
+  it("generates budget execution plan table markers in 사업비 section", () => {
+    const draft = completePipeline(createEmptyDraft("prog-001"));
+    const budget = draft.sections.find((s) => s.title === "사업비 집행 계획");
+    expect(budget?.content).toContain("■ [사업비 요약]");
+    expect(budget?.content).toContain("■ [비목]");
+    expect(budget?.content).toContain("인건비");
+  });
+
   it("completes full pipeline with all sections filled", () => {
     const draft = completePipeline(createEmptyDraft("prog-001"));
     expect(draft.pipelineSteps?.every((s) => s.status === "done")).toBe(true);

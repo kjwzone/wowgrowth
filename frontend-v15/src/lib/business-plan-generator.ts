@@ -1,4 +1,9 @@
 import { companyProfile } from "@/data/company";
+import {
+  buildDefaultBudgetExecutionPlan,
+  parseGovSupportMaxKrw,
+  serializeBudgetExecutionPlan,
+} from "@/lib/budget-execution-plan-model";
 import { matchingResults } from "@/data/matching";
 import { getProgramById } from "@/data/programs";
 import {
@@ -36,6 +41,19 @@ const resolveProgram = (programId: string): SupportProgram | undefined => {
 
 const buildMatchingContext = (programId: string) =>
   matchingResults.find((m) => m.programId === programId);
+
+const buildBudgetSectionContent = (ctx: GenerationContext): string => {
+  const govMax = parseGovSupportMaxKrw(ctx.program?.supportAmount);
+  const plan = buildDefaultBudgetExecutionPlan({
+    govSupportMaxKrw: govMax,
+    companyName: ctx.company.name,
+  });
+  return [
+    serializeBudgetExecutionPlan(plan),
+    `■ 지원 한도: ${ctx.program?.supportAmount ?? "공고 기준"}`,
+    "※ budget-designer 스킬 기준 비목·자부담률 [확인 필요] 항목은 제출 전 재검토",
+  ].join("\n");
+};
 
 const sectionContentBuilders: Record<
   BusinessPlanSkillId,
@@ -83,15 +101,7 @@ const sectionContentBuilders: Record<
         "■ 성과지표: 매칭 정확도 90% · 초안 생성 시간 80% 단축 · 관리자 검수 SLA 48h",
         "■ 경쟁 대비: 단순 LLM 초안 대비 공고 배점·양식·규정 준수 검증까지 통합",
       ].join("\n"),
-    "사업비 집행 계획": ({ program }) =>
-      [
-        `■ 지원 한도: ${program?.supportAmount ?? "공고 기준"}`,
-        "■ 인건비(60%): AI·백엔드·PM 3명 × 6개월",
-        "■ 외주용역(25%): UI/UX·보안 점검",
-        "■ 직접비(10%): 클라우드·API·LLM 사용료",
-        "■ 간접비(5%): 사무·통신",
-        "※ budget-designer 스킬 기준 비목·자부담률 [확인 필요] 항목은 제출 전 재검토",
-      ].join("\n"),
+    "사업비 집행 계획": (ctx) => buildBudgetSectionContent(ctx),
     "3. 성장전략 Scale-up_사업화 추진 전략": ({ company, matching }) =>
       [
         "■ TAM/SAM/SOM: 국내 중소·벤처 약 400만社 / 정부지원 수요 50만社 / 1차 목표 5,000社",
@@ -121,8 +131,7 @@ const sectionContentBuilders: Record<
       program?.aiFitAnalysis ?? "시장성 분석 [확인 필요]",
     "5. 추진체계 및 일정": () =>
       "1차년도: TRL 5→6 · 2차년도: TRL 6→7 · 분기별 마일스톤",
-    "6. 사업비 편성 및 집행계획": ({ program }) =>
-      `총 사업비 ${program?.supportAmount ?? ""} · budget-planner 스킬 기준 편성`,
+    "6. 사업비 편성 및 집행계획": (ctx) => buildBudgetSectionContent(ctx),
   },
 };
 

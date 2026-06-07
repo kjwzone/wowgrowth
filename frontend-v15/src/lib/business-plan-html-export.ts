@@ -7,6 +7,13 @@ import {
   parseTagBlocks,
 } from "@/lib/business-plan-content-parser";
 import type { ReferenceImage } from "@/lib/business-plan-reference-images";
+import {
+  formatKrw,
+  lineItemTotal,
+  parseBudgetExecutionPlan,
+  pctOfTotal,
+  sumBudgetItems,
+} from "@/lib/budget-execution-plan-model";
 import { buildTamSamSomTiers } from "@/lib/tam-sam-som-model";
 
 const escapeHtml = (text: string): string =>
@@ -48,6 +55,89 @@ const renderBudgetBars = (content: string): string => {
         `<div class="bar-row"><span class="bar-label">${escapeHtml(item.name)}</span><div class="bar-track"><div class="bar-fill" style="width:${item.value}%"></div></div><span class="bar-value">${item.value}%</span></div>`,
     )
     .join("")}</div>`;
+};
+
+const renderBudgetExecutionPlan = (content: string): string => {
+  const plan = parseBudgetExecutionPlan(content);
+  if (!plan) return "";
+
+  const { summary, items } = plan;
+  const totals = sumBudgetItems(items);
+
+  const summaryTable = `<table class="budget-table budget-summary">
+    <caption>〈 사업비 집행 계획 〉</caption>
+    <thead>
+      <tr>
+        <th rowspan="2">구분</th>
+        <th colspan="2">총사업비 (A=B+C)</th>
+        <th colspan="2">정부지원사업비 (B)</th>
+        <th colspan="4">창업기업 자기부담사업비 (C)</th>
+      </tr>
+      <tr>
+        <th>금액(원)</th><th>%</th>
+        <th>금액(원)</th><th>%</th>
+        <th colspan="2">현금</th><th colspan="2">현물</th>
+      </tr>
+      <tr>
+        <th></th><th></th><th></th><th></th><th></th>
+        <th>금액(원)</th><th>%</th><th>금액(원)</th><th>%</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>${escapeHtml(summary.regionLabel)}</td>
+        <td>${formatKrw(summary.totalAmount)}</td><td>100</td>
+        <td>${formatKrw(summary.govSupportAmount)}</td><td>${pctOfTotal(summary.govSupportAmount, summary.totalAmount)}</td>
+        <td>${formatKrw(summary.selfCashAmount)}</td><td>${pctOfTotal(summary.selfCashAmount, summary.totalAmount)}</td>
+        <td>${formatKrw(summary.selfInKindAmount)}</td><td>${pctOfTotal(summary.selfInKindAmount, summary.totalAmount)}</td>
+      </tr>
+    </tbody>
+  </table>`;
+
+  const itemRows = items
+    .map(
+      (item) =>
+        `<tr>
+          <td>${escapeHtml(item.category)}</td>
+          <td class="left">${escapeHtml(item.plan)}</td>
+          <td>${formatKrw(item.govSupport)}</td>
+          <td>${formatKrw(item.selfCash)}</td>
+          <td>${formatKrw(item.selfInKind)}</td>
+          <td colspan="2">${formatKrw(lineItemTotal(item))}</td>
+        </tr>`,
+    )
+    .join("");
+
+  const detailTable = `<table class="budget-table budget-detail">
+    <thead>
+      <tr>
+        <th rowspan="2">비 목</th>
+        <th rowspan="2">집행 계획</th>
+        <th colspan="5">총사업비(원) (ⓐ+ⓑ)</th>
+      </tr>
+      <tr>
+        <th>정부지원사업비 (ⓐ)</th>
+        <th colspan="2">자기부담사업비 (ⓑ)</th>
+        <th colspan="2">합계 (ⓐ+ⓑ)</th>
+      </tr>
+      <tr>
+        <th></th><th></th><th></th>
+        <th>현금</th><th>현물</th><th colspan="2"></th>
+      </tr>
+    </thead>
+    <tbody>
+      ${itemRows}
+      <tr class="total-row">
+        <td colspan="2">합 계</td>
+        <td>${formatKrw(totals.govSupport)}</td>
+        <td>${formatKrw(totals.selfCash)}</td>
+        <td>${formatKrw(totals.selfInKind)}</td>
+        <td colspan="2">${formatKrw(totals.total)}</td>
+      </tr>
+    </tbody>
+  </table>`;
+
+  return `<div class="budget-plan">${summaryTable}${detailTable}</div>`;
 };
 
 const TAM_RING_COLORS: Record<string, string> = {
@@ -110,7 +200,7 @@ const renderSectionVisualHtml = (title: string, content: string): string => {
     return `${renderTagGrid(content)}${renderBullets(content)}`;
   }
   if (title.includes("사업비")) {
-    return `${renderBudgetBars(content)}${renderBullets(content)}`;
+    return `${renderBudgetExecutionPlan(content) || renderBudgetBars(content)}${renderBullets(content)}`;
   }
   if (title.includes("성장전략")) {
     return `${renderTamSamSomDiagram(content)}${renderBullets(content)}`;
@@ -156,6 +246,14 @@ const BASE_STYLES = `
   .bar-track { height: 10px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
   .bar-fill { height: 100%; background: #0040e0; border-radius: 999px; }
   .bar-fill.tam { background: #031635; }
+  .budget-plan { margin: 1rem 0 1.25rem; display: flex; flex-direction: column; gap: 1.25rem; }
+  .budget-table { width: 100%; border-collapse: collapse; font-size: .75rem; }
+  .budget-table caption { caption-side: top; font-weight: 700; font-size: .875rem; color: #031635; margin-bottom: .75rem; text-align: center; }
+  .budget-table th, .budget-table td { border: 1px solid #cbd5e1; padding: .5rem .375rem; text-align: center; vertical-align: middle; }
+  .budget-table th { background: #f1f5f9; font-weight: 600; color: #031635; }
+  .budget-table td.left { text-align: left; }
+  .budget-table .total-row { background: #f8fafc; font-weight: 700; }
+  @media (max-width: 640px) { .budget-table { font-size: .6875rem; } }
   .tam-diagram { margin: 1rem 0 1.25rem; }
   .tam-diagram-label { font-size: .75rem; font-weight: 600; color: #64748b; margin-bottom: .75rem; }
   .tam-diagram-grid { display: grid; grid-template-columns: minmax(200px, 260px) 1fr; gap: 1.5rem; align-items: center; }
