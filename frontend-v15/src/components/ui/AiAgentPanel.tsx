@@ -15,7 +15,7 @@ export const AiAgentPanel = ({
   pipelineSteps,
   activeAgent,
   onGenerateFull,
-  fullGenerateLabel = "스킬 파이프라인 전체 생성",
+  fullGenerateLabel = "전체 사업계획서 AI 생성",
 }: {
   title?: string;
   message: string;

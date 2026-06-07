@@ -41,7 +41,7 @@ export const validateForSubmission = (
     {
       item: "스킬 파이프라인 완료 (submission-verifier)",
       pass: pipelineDone,
-      note: pipelineDone ? undefined : "「스킬 파이프라인 전체 생성」을 먼저 실행하세요.",
+      note: pipelineDone ? undefined : "「전체 사업계획서 AI 생성」을 먼저 실행하세요.",
     },
     {
       item: "규정 준수 검증 (compliance-checker)",

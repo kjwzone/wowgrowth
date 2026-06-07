@@ -12,6 +12,11 @@ import {
   type BusinessPlanSkillId,
   type PipelineAgentStep,
 } from "@/lib/business-plan-skill";
+import {
+  buildDeepSectionExtras,
+  deepSectionCompleteness,
+  mergeDeepContent,
+} from "@/lib/business-plan-deep-content";
 import type { BusinessPlanDraft, BusinessPlanSection, SupportProgram } from "@/types";
 
 let draftProgramOverride: SupportProgram | undefined;
@@ -121,6 +126,8 @@ const sectionContentBuilders: Record<
   },
 };
 
+type BuildDepth = "basic" | "deep";
+
 type GenerationContext = {
   company: typeof companyProfile;
   program: SupportProgram | undefined;
@@ -133,22 +140,41 @@ const buildContext = (programId: string): GenerationContext => ({
   matching: buildMatchingContext(programId),
 });
 
+const sectionCompleteness = (content: string, depth: BuildDepth): number => {
+  if (depth === "deep") return deepSectionCompleteness(content);
+  if (content.length > 80) return 85;
+  if (content.length > 20) return 55;
+  return 20;
+};
+
 const buildSection = (
   title: string,
   skillId: BusinessPlanSkillId,
   ctx: GenerationContext,
   existing?: BusinessPlanSection,
+  depth: BuildDepth = "basic",
 ): BusinessPlanSection => {
   const builder = sectionContentBuilders[skillId][title];
-  const content = existing?.content?.trim()
-    ? existing.content
-    : builder?.(ctx) ?? `[${title}] — plan-writer 초안 [확인 필요]`;
+  const basicContent =
+    depth === "deep" || !existing?.content?.trim()
+      ? builder?.(ctx) ?? `[${title}] — plan-writer 초안 [확인 필요]`
+      : existing.content;
+
+  const content =
+    depth === "deep"
+      ? mergeDeepContent(
+          builder?.(ctx) ?? basicContent,
+          buildDeepSectionExtras(title, skillId, ctx),
+        )
+      : existing?.content?.trim()
+        ? existing.content
+        : basicContent;
 
   return {
     id: existing?.id ?? sectionIdFromTitle(title),
     title,
     content,
-    completeness: content.length > 80 ? 85 : content.length > 20 ? 55 : 20,
+    completeness: sectionCompleteness(content, depth),
   };
 };
 
@@ -192,7 +218,7 @@ export const generateSectionContent = (
   const ctx = buildContext(draft.programId);
   const sections = draft.sections.map((section) =>
     section.id === sectionId
-      ? buildSection(section.title, draft.skillId, ctx, { ...section, content: "" })
+      ? buildSection(section.title, draft.skillId, ctx, section, "deep")
       : section,
   );
   return recalcDraft({ ...draft, sections });

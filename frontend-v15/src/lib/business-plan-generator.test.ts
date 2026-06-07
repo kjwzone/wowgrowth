@@ -27,17 +27,21 @@ describe("business-plan-generator", () => {
     expect(draft.sections.length).toBeGreaterThan(0);
   });
 
-  it("generates section content via plan-writer templates", () => {
+  it("generates deep section content via plan-writer on section AI generate", () => {
     const draft = createEmptyDraft("prog-001");
     const emptySection = draft.sections.find(
       (s) => s.title === "4. 팀 구성 Team_대표자 및 팀원 구성 계획",
     );
     expect(emptySection).toBeDefined();
 
+    const beforeLen = emptySection!.content.length;
     const updated = generateSectionContent(draft, emptySection!.id);
     const section = updated.sections.find((s) => s.id === emptySection!.id);
+
     expect(section?.content).toContain("대표");
-    expect(section?.completeness).toBeGreaterThan(50);
+    expect(section?.content).toContain("【심화");
+    expect(section!.content.length).toBeGreaterThan(beforeLen);
+    expect(section?.completeness).toBeGreaterThanOrEqual(85);
   });
 
   it("completes full pipeline with all sections filled", () => {

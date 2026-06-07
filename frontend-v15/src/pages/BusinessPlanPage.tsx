@@ -202,7 +202,7 @@ export default function BusinessPlanPage() {
         onGenerateFull={() => void generateFullDraft()}
         onGenerate={() => void generateSection()}
         generateLabel="선택 섹션 AI 생성"
-        fullGenerateLabel="스킬 파이프라인 전체 생성"
+        fullGenerateLabel="전체 사업계획서 AI 생성"
       />
 
       <SectionCard title="항목별 에디터" className="mt-6">
