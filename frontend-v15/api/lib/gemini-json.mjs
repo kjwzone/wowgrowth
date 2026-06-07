@@ -1,11 +1,20 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const MODEL_CANDIDATES = [
+const QUALITY_MODEL_CANDIDATES = [
   process.env.GEMINI_MODEL,
   "gemini-2.5-pro",
   "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
 ].filter(Boolean);
+
+const FAST_MODEL_CANDIDATES = [
+  process.env.GEMINI_FAST_MODEL,
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  process.env.GEMINI_MODEL,
+].filter(Boolean);
+
+export const getModelCandidates = (tier = "quality") =>
+  tier === "fast" ? [...new Set(FAST_MODEL_CANDIDATES)] : [...new Set(QUALITY_MODEL_CANDIDATES)];
 
 const extractJson = (text) => {
   const trimmed = text.trim();
@@ -21,6 +30,7 @@ export const generateJsonWithGemini = async ({
   prompt,
   maxOutputTokens = 8192,
   temperature = 0.25,
+  tier = "quality",
 }) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -32,7 +42,7 @@ export const generateJsonWithGemini = async ({
   const genAI = new GoogleGenerativeAI(apiKey);
   let lastError = null;
 
-  for (const modelName of MODEL_CANDIDATES) {
+  for (const modelName of getModelCandidates(tier)) {
     try {
       const model = genAI.getGenerativeModel({
         model: modelName,

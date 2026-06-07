@@ -21,6 +21,12 @@ const collectApiHandlers = (dir, base = dir) => {
   });
 };
 
+const FUNCTION_MAX_DURATION = {
+  "business-plan/generate.mjs": 120,
+  "business-plan/section.mjs": 60,
+  "business-plan/verify.mjs": 60,
+};
+
 const writeFunction = async (handlerPath) => {
   const routePath = handlerPath.replace(/\.mjs$/, "");
   const funcDir = join(outputDir, "functions", "api", `${routePath}.func`);
@@ -36,6 +42,8 @@ const writeFunction = async (handlerPath) => {
     packages: "bundle",
   });
 
+  const maxDuration = FUNCTION_MAX_DURATION[handlerPath] ?? 30;
+
   writeFileSync(
     join(funcDir, ".vc-config.json"),
     JSON.stringify(
@@ -44,6 +52,7 @@ const writeFunction = async (handlerPath) => {
         handler: "index.mjs",
         launcherType: "Nodejs",
         shouldAddHelpers: true,
+        maxDuration,
       },
       null,
       2,

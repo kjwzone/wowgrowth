@@ -110,6 +110,7 @@ export const pipelineStepsFromApiStages = (
   const agentMap: Record<string, string> =
     skillId === "gov-funding-plan"
       ? {
+          generate: "plan-writer",
           announcement: "announcement-analyst",
           plan: "tech-writer",
           budget: "budget-planner",
@@ -117,6 +118,7 @@ export const pipelineStepsFromApiStages = (
           submission: "submission-reviewer",
         }
       : {
+          generate: "plan-writer",
           announcement: "announcement-analyst",
           plan: "plan-writer",
           budget: "budget-designer",

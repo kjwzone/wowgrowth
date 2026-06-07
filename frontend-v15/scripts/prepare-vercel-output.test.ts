@@ -31,6 +31,14 @@ describe("prepare-vercel-output", () => {
     expect(config.routes.some((route) => route.src === "/api/business-plan/health")).toBe(true);
     expect(config.routes.some((route) => route.src === "/api/lib/gemini-json")).toBe(false);
 
+    const generateConfig = JSON.parse(
+      readFileSync(
+        join(root, ".vercel", "output", "functions", "api", "business-plan", "generate.func", ".vc-config.json"),
+        "utf8",
+      ),
+    ) as { maxDuration?: number };
+    expect(generateConfig.maxDuration).toBe(120);
+
     rmSync(join(root, ".vercel", "output"), { recursive: true, force: true });
   });
 });

@@ -15,7 +15,9 @@ export const AiAgentPanel = ({
   pipelineSteps,
   activeAgent,
   onGenerateFull,
+  onGenerateFullQuality,
   fullGenerateLabel = "전체 사업계획서 AI 생성",
+  fullGenerateQualityLabel = "고품질 생성 (느림)",
 }: {
   title?: string;
   message: string;
@@ -26,7 +28,9 @@ export const AiAgentPanel = ({
   pipelineSteps?: PipelineStep[];
   activeAgent?: string;
   onGenerateFull?: () => void;
+  onGenerateFullQuality?: () => void;
   fullGenerateLabel?: string;
+  fullGenerateQualityLabel?: string;
 }) => (
   <div className="rounded-xl border border-secondary/20 bg-gradient-to-br from-primary-fixed/30 to-secondary-fixed/20 p-5">
     <div className="flex items-start gap-3">
@@ -94,7 +98,7 @@ export const AiAgentPanel = ({
               {state === "generating" ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  파이프라인 실행 중...
+                  AI 생성 중...
                 </>
               ) : (
                 <>
@@ -102,6 +106,17 @@ export const AiAgentPanel = ({
                   {fullGenerateLabel}
                 </>
               )}
+            </button>
+          ) : null}
+          {onGenerateFullQuality ? (
+            <button
+              type="button"
+              onClick={onGenerateFullQuality}
+              disabled={state === "generating"}
+              title="공고 분석 + Pro 모델 2단계 (약 2~4분)"
+              className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-surface px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/5 disabled:opacity-60"
+            >
+              {fullGenerateQualityLabel}
             </button>
           ) : null}
           {onGenerate ? (

@@ -19,7 +19,7 @@ export default async function handler(req, res) {
       return sendJson(res, hasKey ? 200 : 503, { ok: hasKey, gemini: hasKey });
     }
 
-    const mode = body.mode === "fast" ? "fast" : "pipeline";
+    const mode = body.mode === "pipeline" ? "pipeline" : "fast";
     const stages = [];
 
     const result =

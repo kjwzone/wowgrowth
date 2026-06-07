@@ -56,11 +56,11 @@ export default function BusinessPlanPage() {
     setTimeout(() => setAiState("idle"), 1500);
   };
 
-  const generateFullDraft = async () => {
+  const generateFullDraft = async (mode: "fast" | "pipeline" = "fast") => {
     if (!draft) return;
     setAiState("generating");
     setSubmissionResult(null);
-    const updated = await businessPlanApi.generateFullDraft(setDraft);
+    const updated = await businessPlanApi.generateFullDraft(setDraft, { mode });
     setDraft(updated);
     setAiState("done");
     setTimeout(() => setAiState("idle"), 1500);
@@ -217,7 +217,7 @@ export default function BusinessPlanPage() {
       <AiAgentPanel
         message={
           aiState === "generating"
-            ? "Cursor Agent Skill 파이프라인 실행 중… (공고 분석 → 작성 → 예산 → 검증)"
+            ? "Gemini Flash로 초안 생성 중… (보통 30초~2분)"
             : activeSection
               ? activeSection.content.trim().length < 50
                 ? `「${activeSection.title}」이 비어 있습니다. 아래 「선택 섹션 AI 추가 생성 (심화)」을 누르면 plan-writer가 해당 섹션 초안을 작성합니다.`
@@ -228,10 +228,12 @@ export default function BusinessPlanPage() {
         skillId={draft.skillId}
         pipelineSteps={draft.pipelineSteps}
         activeAgent={draft.activeAgent}
-        onGenerateFull={() => void generateFullDraft()}
+        onGenerateFull={() => void generateFullDraft("fast")}
+        onGenerateFullQuality={() => void generateFullDraft("pipeline")}
         onGenerate={() => void generateSection()}
         generateLabel="선택 섹션 AI 추가 생성 (심화)"
-        fullGenerateLabel="전체 사업계획서 AI 생성"
+        fullGenerateLabel="전체 AI 생성 (빠름)"
+        fullGenerateQualityLabel="고품질 생성"
       />
 
       <SectionCard

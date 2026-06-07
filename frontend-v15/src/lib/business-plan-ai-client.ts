@@ -41,7 +41,7 @@ export const businessPlanAiClient = {
 
   generate: async (
     ctx: AiGenerationContext,
-    mode: "fast" | "pipeline" = "pipeline",
+    mode: "fast" | "pipeline" = "fast",
   ): Promise<GeneratePlanResponse> => {
     const result = await postJson<GeneratePlanResponse>("generate", {
       ...ctx,

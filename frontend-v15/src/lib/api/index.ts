@@ -152,24 +152,33 @@ export const businessPlanApi = {
     return draft;
   },
 
-  /** Gemini 다단계 파이프라인 또는 mock fallback */
+  /** Gemini fast(1회) 또는 pipeline(2회) — 기본 fast */
   generateFullDraft: async (
     onProgress?: (draft: BusinessPlanDraft) => void,
+    options?: { mode?: "fast" | "pipeline" },
   ): Promise<BusinessPlanDraft> => {
     const programId = draftCache.programId;
+    const mode = options?.mode ?? "fast";
     const pipeline = getPipelineForSkill(draftCache.skillId);
 
     if (await resolveAiEnabled()) {
-      let draft = createEmptyDraft(programId);
-      for (let i = 0; i < pipeline.length; i += 1) {
-        draft = runPipelineStep(draft, i);
-        onProgress?.({ ...draft, pipelineSteps: draft.pipelineSteps });
-        await delay(200);
-      }
+      const runningSteps: PipelineStep[] =
+        mode === "fast"
+          ? [{ id: "generate", agent: "plan-writer", label: "AI 초안 생성", status: "running" }]
+          : pipeline.map((step, index) => ({
+              ...step,
+              status: index === 0 ? "running" : "pending",
+            }));
+
+      let draft: BusinessPlanDraft = {
+        ...createEmptyDraft(programId),
+        pipelineSteps: runningSteps,
+      };
+      onProgress?.(draft);
 
       try {
         const ctx = await getAiContext();
-        const result = await businessPlanAiClient.generate(ctx, "pipeline");
+        const result = await businessPlanAiClient.generate(ctx, mode);
         draft = adaptApiPlanToDraft(result.plan, {
           programId,
           program: ctx.program,
