@@ -236,10 +236,6 @@ export const DiagnosisHarnessReport = ({ report }: { report: CompanyDiagnosisRep
           ))}
         </ul>
       </SectionCard>
-
-      <p className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-xs leading-relaxed text-amber-950">
-        {report.disclaimer}
-      </p>
     </div>
   );
 };
