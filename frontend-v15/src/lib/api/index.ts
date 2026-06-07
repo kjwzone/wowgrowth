@@ -36,6 +36,7 @@ import type {
   DashboardInsight,
   DashboardStats,
   MatchingResult,
+  PipelineStep,
   SupportProgram,
   UserSession,
 } from "@/types";
