@@ -3,6 +3,7 @@ export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 
 export const GEMINI_MODEL_CANDIDATES = [
   process.env.GEMINI_MODEL,
+  "gemini-2.5-pro",
   DEFAULT_GEMINI_MODEL,
   "gemini-2.5-flash-lite",
 ].filter((m, i, arr): m is string => Boolean(m) && arr.indexOf(m) === i);

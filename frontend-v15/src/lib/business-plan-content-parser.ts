@@ -1,3 +1,5 @@
+import { splitPrimaryAndDeep, stripBulletPrefix } from "@/lib/business-plan-outline";
+
 export type KeyValueItem = { key: string; value: string };
 export type TagBlock = { tag: string; text: string };
 
@@ -21,12 +23,22 @@ export const parseTagBlocks = (content: string): TagBlock[] => {
   });
 };
 
-export const parseBulletItems = (lines: readonly string[]): string[] =>
-  lines
-    .map((line) =>
-      line.replace(/^(\d+\)|[·•\-]|■)\s*/, "").replace(/^【[^】]+】\s*/, "").trim(),
-    )
-    .filter((line) => line.length > 0 && !line.startsWith("【심화"));
+export const parseBulletItems = (lines: readonly string[]): string[] => {
+  const primaryLines = splitPrimaryAndDeep(lines.join("\n")).primary
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return primaryLines
+    .map((line) => stripBulletPrefix(line).replace(/^【[^】]+】\s*/, "").trim())
+    .filter(
+      (line) =>
+        line.length > 0 &&
+        !/^심화\s*[—-]/.test(line) &&
+        !line.includes("[사업비 요약]") &&
+        !line.includes("[비목]"),
+    );
+};
 
 export const parsePercentages = (content: string): { name: string; value: number }[] => {
   const items: { name: string; value: number }[] = [];

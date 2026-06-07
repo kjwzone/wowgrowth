@@ -22,6 +22,7 @@ import {
   deepSectionCompleteness,
   mergeDeepContent,
 } from "@/lib/business-plan-deep-content";
+import { normalizeBusinessPlanContent } from "@/lib/business-plan-outline";
 import type { BusinessPlanDraft, BusinessPlanSection, SupportProgram } from "@/types";
 
 let draftProgramOverride: SupportProgram | undefined;
@@ -88,10 +89,10 @@ const sectionContentBuilders: Record<
         .join("\n"),
     "1. 문제 인식 Problem_창업 아이템의 필요성": ({ company, matching }) =>
       [
-        "1) 시장 문제: 정부지원사업 공고는 연간 1만 건 이상 공개되나, 기업은 적합 공고 탐색과 서류 작성에 평균 40시간 이상 소요합니다.",
-        "2) 고객 Pain: 공고 해석·배점 기준·양식 불일치로 탈락률이 높고, 컨설턴트 의존 비용이 큽니다.",
-        `3) ${company.name} 관점: ${matching?.gaps[0] ?? "공고별 맞춤 사업계획서 작성 역량 보완 필요"}.`,
-        "4) 개발·도입 필요성: AI Agent Skill 파이프라인으로 공고 분석→초안→예산→검증을 자동화해야 합니다.",
+        "1) 시장 문제 — 정부지원사업 공고 연 1만 건 이상 공개 · 기업 공고 탐색·서류 작성 평균 40시간 이상 소요",
+        "2) 고객 Pain — 공고 해석·배점 기준·양식 불일치로 탈락률 상승 · 컨설턴트 의존 비용 증가",
+        `3) ${company.name} 관점 — ${matching?.gaps[0] ?? "공고별 맞춤 사업계획서 작성 역량 보완 필요"}`,
+        "4) 개발·도입 필요성 — AI Agent Skill 파이프라인으로 공고 분석→초안→예산→검증 자동화 추진",
       ].join("\n"),
     "2. 실현 가능성 Solution_창업 아이템의 개발 계획": ({ company }) =>
       [
@@ -169,15 +170,14 @@ const buildSection = (
       ? builder?.(ctx) ?? `[${title}] — plan-writer 초안 [확인 필요]`
       : existing.content;
 
-  const content =
+  const rawContent =
     depth === "deep"
-      ? mergeDeepContent(
-          builder?.(ctx) ?? basicContent,
-          buildDeepSectionExtras(title, skillId, ctx),
-        )
+      ? mergeDeepContent(builder?.(ctx) ?? basicContent, buildDeepSectionExtras(title, skillId, ctx))
       : existing?.content?.trim()
         ? existing.content
         : basicContent;
+
+  const content = normalizeBusinessPlanContent(rawContent);
 
   return {
     id: existing?.id ?? sectionIdFromTitle(title),

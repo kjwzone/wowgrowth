@@ -39,7 +39,7 @@ describe("business-plan-generator", () => {
     const section = updated.sections.find((s) => s.id === emptySection!.id);
 
     expect(section?.content).toContain("대표");
-    expect(section?.content).toContain("【심화");
+    expect(section?.content).toContain("■ 심화");
     expect(section!.content.length).toBeGreaterThan(beforeLen);
     expect(section?.completeness).toBeGreaterThanOrEqual(85);
   });

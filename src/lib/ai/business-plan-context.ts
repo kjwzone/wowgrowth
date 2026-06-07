@@ -21,6 +21,8 @@ export type BusinessPlanGenerationContext = {
   matching: BusinessPlanMatchingContext | null;
   diagnosis: DiagnosisReport | null;
   attachmentsNote: string;
+  samplePdfUrl?: string | null;
+  formPdfUrl?: string | null;
 };
 
 const PROGRAM_FORM_OUTLINE = {
@@ -92,8 +94,9 @@ export const buildStartupInputPayload = (
     },
     양식_개요: PROGRAM_FORM_OUTLINE,
     attachments: {
-      passed_sample_pdf: ctx.attachmentsNote,
-      government_form_pdf: "공고 원문·양식 개요로 대체",
+      passed_sample_pdf: ctx.samplePdfUrl ?? ctx.attachmentsNote,
+      government_form_pdf: ctx.formPdfUrl ?? "공고 원문·양식 개요로 대체",
+      note: ctx.attachmentsNote,
     },
   };
 };

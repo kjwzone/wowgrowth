@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api/errors";
 import { requireAuth } from "@/lib/auth/session";
 import { resolveCompanyForBusinessPlan } from "@/lib/auth/resolve-company-for-plan";
 import { generateBusinessPlanDraft } from "@/lib/ai/business-plan";
+import { runBusinessPlanPipeline } from "@/lib/ai/business-plan-pipeline";
 import { loadBusinessPlanGenerationContext } from "@/lib/ai/load-business-plan-context";
 import { createAiJob, updateAiJobStatus } from "@/lib/ai/jobs";
 import { PROMPT_VERSION, SCHEMA_VERSION } from "@/lib/ai/schemas";
@@ -12,12 +13,13 @@ import { createClient } from "@/lib/supabase/server";
 const bodySchema = z.object({
   programId: z.string().uuid(),
   matchingResultId: z.string().uuid().optional(),
+  mode: z.enum(["fast", "pipeline"]).default("pipeline"),
 });
 
 export const POST = async (request: Request) =>
   handleApiRoute(async () => {
     const { userId, profile } = await requireAuth();
-    const { programId, matchingResultId } = bodySchema.parse(await request.json());
+    const { programId, matchingResultId, mode } = bodySchema.parse(await request.json());
     const company = await resolveCompanyForBusinessPlan(userId, profile.role, {
       matchingResultId,
       programId,
@@ -38,7 +40,10 @@ export const POST = async (request: Request) =>
         programId,
         matchingResultId,
       });
-      const { plan, model } = await generateBusinessPlanDraft(ctx);
+      const { plan, model } =
+        mode === "pipeline"
+          ? await runBusinessPlanPipeline(ctx)
+          : await generateBusinessPlanDraft(ctx);
 
       const row = {
         company_id: company.id,

@@ -71,9 +71,14 @@ export const loadBusinessPlanGenerationContext = async (params: {
     ? (diagnosisRow.report_json as DiagnosisReport)
     : null;
 
-  const hasPdfEnv =
-    Boolean(process.env.BUSINESS_PLAN_SAMPLE_PDF_URL) ||
-    Boolean(process.env.BUSINESS_PLAN_FORM_PDF_URL);
+  const samplePdfUrl = process.env.BUSINESS_PLAN_SAMPLE_PDF_URL ?? "";
+  const formPdfUrl = process.env.BUSINESS_PLAN_FORM_PDF_URL ?? "";
+
+  const attachmentsNote = [
+    samplePdfUrl ? `합격 샘플 PDF: ${samplePdfUrl}` : "합격 샘플 PDF 미설정",
+    formPdfUrl ? `정부 양식 PDF: ${formPdfUrl}` : "정부 양식 PDF 미설정",
+    "PDF 본문은 미첨부 — URL·공고 원문·DB 입력으로 맥락 구성",
+  ].join(" · ");
 
   return {
     company: params.company,
@@ -82,8 +87,8 @@ export const loadBusinessPlanGenerationContext = async (params: {
       (meta?.metadata_json as Record<string, unknown> | undefined) ?? null,
     matching,
     diagnosis,
-    attachmentsNote: hasPdfEnv
-      ? "환경변수에 PDF URL 설정됨 — 본 MVP에서는 텍스트 맥락만 반영"
-      : "합격 샘플 PDF·양식 PDF 미첨부 — 공고 원문·양식 개요·DB 입력만 사용",
+    attachmentsNote,
+    samplePdfUrl: samplePdfUrl || null,
+    formPdfUrl: formPdfUrl || null,
   };
 };

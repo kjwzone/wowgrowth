@@ -89,6 +89,14 @@ export type BusinessPlanDraft = {
   sections: BusinessPlanSection[];
   overallCompleteness: number;
   status: "draft" | "review" | "ready";
+  /** Gemini 생성 메타 */
+  aiModel?: string;
+  planTitle?: string;
+  premises?: string;
+  verification?: { item: string; result: string; notes?: string }[];
+  keyRisks?: string[];
+  evidenceChecklist?: string[];
+  submissionChecklist?: { item: string; passed: boolean; message: string }[];
 };
 
 export type ReviewStatus = "대기" | "승인" | "반려" | "보완요청";

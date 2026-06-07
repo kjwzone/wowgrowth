@@ -12,6 +12,14 @@ import {
   fetchBizinfoProgramsFromApi,
 } from "@/lib/bizinfo-client";
 import {
+  adaptApiPlanToDraft,
+  draftToApiPlan,
+  mergeSectionIntoDraft,
+  pipelineStepsFromApiStages,
+} from "@/lib/business-plan-adapter";
+import { buildAiContext } from "@/lib/business-plan-ai-context";
+import { businessPlanAiClient, isAiFallbackError } from "@/lib/business-plan-ai-client";
+import {
   completePipeline,
   createEmptyDraft,
   generateSectionContent,
@@ -39,6 +47,20 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 let draftCache: BusinessPlanDraft = businessPlanDraft;
 let bizinfoProgramCache: SupportProgram[] = [];
+let cachedProgram: SupportProgram | undefined;
+let aiEnabled: boolean | null = null;
+
+const resolveAiEnabled = async (): Promise<boolean> => {
+  if (aiEnabled !== null) return aiEnabled;
+  aiEnabled = await businessPlanAiClient.isAvailable();
+  return aiEnabled;
+};
+
+const getAiContext = async (): Promise<ReturnType<typeof buildAiContext>> => {
+  const program =
+    cachedProgram ?? (await programApi.getById(draftCache.programId)) ?? programs[0]!;
+  return buildAiContext(program);
+};
 
 export type ProgramListResult = {
   items: SupportProgram[];
@@ -123,61 +145,135 @@ export const businessPlanApi = {
     }
 
     setDraftProgram(program);
+    cachedProgram = program;
     const draft = createEmptyDraft(programId);
     draftCache = draft;
     await delay(150);
     return draft;
   },
 
-  /** business-plan-writer / gov-funding-plan 스킬 파이프라인 시뮬레이션 */
+  /** Gemini 다단계 파이프라인 또는 mock fallback */
   generateFullDraft: async (
     onProgress?: (draft: BusinessPlanDraft) => void,
   ): Promise<BusinessPlanDraft> => {
     const programId = draftCache.programId;
-    let draft = createEmptyDraft(programId);
-    const pipeline = getPipelineForSkill(draft.skillId);
+    const pipeline = getPipelineForSkill(draftCache.skillId);
 
+    if (await resolveAiEnabled()) {
+      let draft = createEmptyDraft(programId);
+      for (let i = 0; i < pipeline.length; i += 1) {
+        draft = runPipelineStep(draft, i);
+        onProgress?.({ ...draft, pipelineSteps: draft.pipelineSteps });
+        await delay(200);
+      }
+
+      try {
+        const ctx = await getAiContext();
+        const result = await businessPlanAiClient.generate(ctx, "pipeline");
+        draft = adaptApiPlanToDraft(result.plan, {
+          programId,
+          program: ctx.program,
+          model: result.model,
+          pipelineSteps: pipelineStepsFromApiStages(result.stages, draft.skillId),
+        });
+        draftCache = draft;
+        onProgress?.(draft);
+        return draft;
+      } catch (error) {
+        if (!isAiFallbackError(error)) throw error;
+      }
+    }
+
+    let draft = createEmptyDraft(programId);
     for (let i = 0; i < pipeline.length; i += 1) {
       draft = runPipelineStep(draft, i);
       onProgress?.(draft);
       await delay(getPipelineDelayMs(pipeline[i]!));
     }
-
     draft = completePipeline(draft);
     draftCache = draft;
     onProgress?.(draft);
     return draft;
   },
 
-  /** 선택 섹션 — plan-writer / tech-writer·biz-writer 경로 */
+  /** 선택 섹션 — Gemini 심화 또는 mock */
   generateSection: async (
     sectionId: string,
     onProgress?: (draft: BusinessPlanDraft) => void,
   ): Promise<BusinessPlanDraft> => {
-    await delay(900);
-    const draft = generateSectionContent(draftCache, sectionId);
+    const section = draftCache.sections.find((item) => item.id === sectionId);
+    if (!section) throw new Error("섹션을 찾을 수 없습니다.");
+
     draftCache = {
-      ...draft,
+      ...draftCache,
       activeAgent:
-        draft.skillId === "gov-funding-plan" ? "tech-writer" : "plan-writer",
+        draftCache.skillId === "gov-funding-plan" ? "tech-writer" : "plan-writer",
     };
     onProgress?.(draftCache);
-    await delay(300);
-    draftCache = { ...draftCache, activeAgent: undefined };
+
+    if (await resolveAiEnabled()) {
+      try {
+        const ctx = await getAiContext();
+        const result = await businessPlanAiClient.generateSection({
+          ctx,
+          sectionTitle: section.title,
+          existingContent: section.content,
+          mode: "deep",
+        });
+        draftCache = mergeSectionIntoDraft(
+          draftCache,
+          result.section_title,
+          result.content,
+        );
+        onProgress?.({ ...draftCache, activeAgent: undefined });
+        return draftCache;
+      } catch (error) {
+        if (!isAiFallbackError(error)) throw error;
+      }
+    }
+
+    await delay(900);
+    const draft = generateSectionContent(draftCache, sectionId);
+    draftCache = { ...draft, activeAgent: undefined };
     onProgress?.(draftCache);
     return draftCache;
   },
 
-  /** submission-verifier 스킬 — 제출 전 체크리스트 검증 후 ready 상태로 전환 */
+  /** submission-verifier + 로컬 체크 */
   prepareForSubmission: async (): Promise<{
     draft: BusinessPlanDraft;
     result: SubmissionCheckResult;
   }> => {
+    if (await resolveAiEnabled()) {
+      try {
+        const ctx = await getAiContext();
+        const verify = await businessPlanAiClient.verify(ctx, draftToApiPlan(draftCache));
+        draftCache = {
+          ...draftCache,
+          verification: verify.self_verification ?? draftCache.verification,
+          submissionChecklist: verify.checklist,
+          status: verify.ok ? "ready" : "review",
+        };
+        return {
+          draft: draftCache,
+          result: {
+            ok: verify.ok,
+            errors: verify.blocking_issues ?? [],
+            checklist: verify.checklist.map((item) => ({
+              item: item.item,
+              pass: item.passed,
+              note: item.message,
+            })),
+          },
+        };
+      } catch (error) {
+        if (!isAiFallbackError(error)) throw error;
+      }
+    }
+
     await delay(600);
     const { draft, result } = prepareForSubmission(draftCache);
-    if (result.ok) {
-      draftCache = draft;
-    }
+    if (result.ok) draftCache = draft;
     return { draft: result.ok ? draft : draftCache, result };
   },
 };

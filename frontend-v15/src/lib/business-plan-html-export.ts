@@ -15,6 +15,7 @@ import {
   sumBudgetItems,
 } from "@/lib/budget-execution-plan-model";
 import { buildTamSamSomTiers } from "@/lib/tam-sam-som-model";
+import { parseDeepBlocks } from "@/lib/business-plan-outline";
 
 const escapeHtml = (text: string): string =>
   text
@@ -186,21 +187,47 @@ const renderTamSamSomDiagram = (content: string): string => {
   </div>`;
 };
 
+const renderDeepOutline = (content: string): string => {
+  const blocks = parseDeepBlocks(content);
+  if (blocks.length === 0) return "";
+  return `<div class="deep-outline">${blocks
+    .map(
+      (block) =>
+        `<section class="deep-block">
+          <h4>■ 심화 — ${escapeHtml(block.title)}</h4>
+          <ul>${block.items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+        </section>`,
+    )
+    .join("")}</div>`;
+};
+
 const renderBullets = (content: string): string => {
   const items = parseBulletItems(parseContentLines(content));
-  if (items.length === 0) return `<pre>${escapeHtml(content)}</pre>`;
-  return `<ul class="bullet-list">${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+  const deep = renderDeepOutline(content);
+  if (items.length === 0 && !deep) return `<pre>${escapeHtml(content)}</pre>`;
+  const list =
+    items.length > 0
+      ? `<ul class="bullet-list">${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+      : "";
+  return `${list}${deep}`;
 };
 
 const renderSectionVisualHtml = (title: string, content: string): string => {
+  const deep = renderDeepOutline(content);
   if (title === "일반현황") {
-    return renderKeyValueTable(content) || renderBullets(content);
+    return `${renderKeyValueTable(content) || renderBullets(content)}${deep}`;
   }
   if (title.includes("창업 아이템")) {
     return `${renderTagGrid(content)}${renderBullets(content)}`;
   }
   if (title.includes("사업비")) {
-    return `${renderBudgetExecutionPlan(content) || renderBudgetBars(content)}${renderBullets(content)}`;
+    const budget = renderBudgetExecutionPlan(content) || renderBudgetBars(content);
+    const notes = parseBulletItems(parseContentLines(content));
+    const noteList =
+      notes.length > 0
+        ? `<ul class="bullet-list">${notes.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+        : "";
+    return `${budget}${noteList}${deep}`;
   }
   if (title.includes("성장전략")) {
     return `${renderTamSamSomDiagram(content)}${renderBullets(content)}`;
@@ -270,6 +297,11 @@ const BASE_STYLES = `
   @media (max-width: 640px) { .tam-diagram-grid { grid-template-columns: 1fr; } }
   .bullet-list { padding-left: 1.25rem; font-size: .875rem; }
   .bullet-list li { margin-bottom: .375rem; }
+  .deep-outline { margin-top: 1rem; display: flex; flex-direction: column; gap: .875rem; }
+  .deep-block { border: 1px solid #c5d7fa; border-radius: 12px; padding: 1rem; background: linear-gradient(135deg, #f0f4ff, #fff); }
+  .deep-block h4 { margin: 0 0 .5rem; font-size: .875rem; color: #0040e0; }
+  .deep-block ul { margin: 0; padding-left: 1.25rem; font-size: .875rem; color: #475569; }
+  .deep-block li { margin-bottom: .375rem; line-height: 1.5; }
   pre { white-space: pre-wrap; font-size: .875rem; background: #f8fafc; padding: 1rem; border-radius: 8px; }
   .references h2 { font-size: 1rem; margin-bottom: 1rem; }
   .ref-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }

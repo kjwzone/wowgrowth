@@ -167,6 +167,7 @@ export default function BusinessPlanPage() {
           </p>
           <p className="mt-1 text-xs text-on-surface-variant">
             프롬프트 {draft.promptVersion} · startup-package-plan-instructions
+            {draft.aiModel ? ` · ${draft.aiModel}` : " · mock 템플릿"}
           </p>
         </SectionCard>
         <SectionCard title="완성도 점수">

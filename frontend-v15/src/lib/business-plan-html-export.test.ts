@@ -36,6 +36,18 @@ describe("business-plan-html-export", () => {
     expect(html).toContain("정부지원사업비");
   });
 
+  it("exports deep outline blocks in HTML", () => {
+    const draft = createEmptyDraft("prog-001");
+    const section = draft.sections.find((s) => s.title === "일반현황");
+    if (section) {
+      section.content = "■ 기업명: 테스트\n■ 심화 — 정합성\n· 공고 부합도 검토";
+    }
+    const document = mergeDraftToDocument(draft);
+    const html = exportBusinessPlanHtml(document, []);
+    expect(html).toContain("deep-outline");
+    expect(html).toContain("■ 심화 — 정합성");
+  });
+
   it("exports HTML document with tables and reference images", () => {
     const draft = createEmptyDraft("prog-001");
     const document = mergeDraftToDocument(draft);

@@ -8,6 +8,7 @@ import {
 import { BudgetExecutionPlanTables } from "@/components/ui/BudgetExecutionPlanTables";
 import { TamSamSomDiagram } from "@/components/ui/TamSamSomDiagram";
 import { parseBudgetExecutionPlan } from "@/lib/budget-execution-plan-model";
+import { DeepOutlineSections } from "@/components/ui/DeepOutlineSections";
 import {
   parseBulletItems,
   parseContentLines,
@@ -16,6 +17,7 @@ import {
   parseTagBlocks,
   parseTimelinePhases,
 } from "@/lib/business-plan-content-parser";
+import { parseDeepBlocks, splitPrimaryAndDeep } from "@/lib/business-plan-outline";
 import { buildTamSamSomTiers } from "@/lib/tam-sam-som-model";
 
 const CHART_COLORS = ["#0040e0", "#031635", "#5b8def", "#93b4f4", "#c5d7fa"];
@@ -150,6 +152,12 @@ const FlowDiagram = ({ steps }: { steps: string[] }) => (
   </div>
 );
 
+const SectionDeepExtras = ({ content }: { content: string }) => {
+  const deepBlocks = parseDeepBlocks(content);
+  if (deepBlocks.length === 0) return null;
+  return <DeepOutlineSections blocks={deepBlocks} />;
+};
+
 export const BusinessPlanSectionVisual = ({
   sectionTitle,
   content,
@@ -161,9 +169,10 @@ export const BusinessPlanSectionVisual = ({
     return <p className="text-sm italic text-on-surface-variant/70">(미작성)</p>;
   }
 
-  const lines = parseContentLines(content);
+  const { primary } = splitPrimaryAndDeep(content);
+  const lines = parseContentLines(primary);
   const keyValues = parseKeyValueItems(lines);
-  const tags = parseTagBlocks(content);
+  const tags = parseTagBlocks(primary);
   const bullets = parseBulletItems(lines);
 
   if (sectionTitle === "일반현황" && keyValues.length > 0) {
@@ -173,6 +182,7 @@ export const BusinessPlanSectionVisual = ({
         {bullets.length > keyValues.length ? (
           <BulletCalloutList items={bullets.filter((b) => !b.includes(":"))} />
         ) : null}
+        <SectionDeepExtras content={content} />
       </div>
     );
   }
@@ -181,7 +191,7 @@ export const BusinessPlanSectionVisual = ({
     return (
       <div className="space-y-4">
         <TagCalloutGrid blocks={tags} />
-        <FallbackText content={content} />
+        <SectionDeepExtras content={content} />
       </div>
     );
   }
@@ -193,23 +203,25 @@ export const BusinessPlanSectionVisual = ({
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <strong>핵심 Pain Point:</strong> {bullets[0] ?? "시장·고객 문제 정의"}
         </div>
+        <SectionDeepExtras content={content} />
       </div>
     );
   }
 
   if (sectionTitle.includes("실현 가능성")) {
-    const phases = parseTimelinePhases(content);
+    const phases = parseTimelinePhases(primary);
     return (
       <div className="space-y-4">
         {phases.length > 0 ? <Timeline phases={phases} /> : null}
         <BulletCalloutList items={bullets} />
+        <SectionDeepExtras content={content} />
       </div>
     );
   }
 
   if (sectionTitle.includes("사업비")) {
     const budgetPlan = parseBudgetExecutionPlan(content);
-    const budget = parsePercentages(content);
+    const budget = parsePercentages(primary);
     const notes = bullets.filter(
       (b) => !b.startsWith("[사업비") && !b.startsWith("[비목]"),
     );
@@ -218,7 +230,10 @@ export const BusinessPlanSectionVisual = ({
         {budgetPlan ? <BudgetExecutionPlanTables plan={budgetPlan} /> : null}
         {!budgetPlan && budget.length > 0 ? <BudgetPieChart data={budget} /> : null}
         {notes.length > 0 ? <BulletCalloutList items={notes} /> : null}
-        {!budgetPlan && notes.length === 0 ? <FallbackText content={content} /> : null}
+        <SectionDeepExtras content={content} />
+        {!budgetPlan && notes.length === 0 && parseDeepBlocks(content).length === 0 ? (
+          <FallbackText content={primary} />
+        ) : null}
       </div>
     );
   }
@@ -243,12 +258,18 @@ export const BusinessPlanSectionVisual = ({
           </div>
         ) : null}
         <BulletCalloutList items={bullets} />
+        <SectionDeepExtras content={content} />
       </div>
     );
   }
 
   if (sectionTitle.includes("팀 구성")) {
-    return <TeamCards items={bullets} />;
+    return (
+      <div className="space-y-4">
+        <TeamCards items={bullets} />
+        <SectionDeepExtras content={content} />
+      </div>
+    );
   }
 
   if (keyValues.length > 0) {
@@ -260,8 +281,18 @@ export const BusinessPlanSectionVisual = ({
   }
 
   if (bullets.length > 0) {
-    return <BulletCalloutList items={bullets} />;
+    return (
+      <div className="space-y-4">
+        <BulletCalloutList items={bullets} />
+        <SectionDeepExtras content={content} />
+      </div>
+    );
   }
 
-  return <FallbackText content={content} />;
+  const deepOnly = parseDeepBlocks(content);
+  if (deepOnly.length > 0) {
+    return <DeepOutlineSections blocks={deepOnly} />;
+  }
+
+  return <FallbackText content={primary} />;
 };

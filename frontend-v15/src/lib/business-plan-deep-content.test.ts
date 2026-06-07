@@ -6,10 +6,11 @@ import {
 } from "@/lib/business-plan-deep-content";
 
 describe("business-plan-deep-content", () => {
-  it("merges basic content with deep extras", () => {
-    const merged = mergeDeepContent("기본 내용", ["【심화】", "· 추가 분석"]);
+  it("merges basic content with deep extras in outline format", () => {
+    const merged = mergeDeepContent("기본 내용", ["■ 심화 — 테스트", "· 추가 분석"]);
     expect(merged).toContain("기본 내용");
-    expect(merged).toContain("【심화】");
+    expect(merged).toContain("■ 심화 — 테스트");
+    expect(merged).not.toContain(".");
   });
 
   it("builds program-aware deep extras", () => {
@@ -46,7 +47,7 @@ describe("business-plan-deep-content", () => {
     });
 
     expect(extras.some((line) => line.includes("뉴욕 코믹콘"))).toBe(true);
-    expect(extras.some((line) => line.includes("심화"))).toBe(true);
+    expect(extras.some((line) => line.includes("■ 심화"))).toBe(true);
   });
 
   it("scores deep content higher than basic", () => {
