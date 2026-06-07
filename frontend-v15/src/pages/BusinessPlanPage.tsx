@@ -1,13 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AlertCircle, CheckCircle2, Download, Send } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, LayoutList, Pencil, Send } from "lucide-react";
 import { PageHeader, SectionCard } from "@/components/ui/PageHeader";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { AiAgentPanel } from "@/components/ui/AiAgentPanel";
 import { BusinessPlanEditor } from "@/components/ui/BusinessPlanEditor";
+import { BusinessPlanPreview } from "@/components/ui/BusinessPlanPreview";
 import { BUSINESS_PLAN_SKILL_LABELS } from "@/lib/business-plan-skill";
+import { mergeDraftToDocument } from "@/lib/business-plan-document";
 import { businessPlanApi, type SubmissionCheckResult } from "@/lib/api";
 import type { BusinessPlanDraft } from "@/types";
+
+type EditorViewMode = "sections" | "preview";
 
 export default function BusinessPlanPage() {
   const [searchParams] = useSearchParams();
@@ -20,6 +24,7 @@ export default function BusinessPlanPage() {
   const [submissionResult, setSubmissionResult] = useState<SubmissionCheckResult | null>(
     null,
   );
+  const [viewMode, setViewMode] = useState<EditorViewMode>("sections");
 
   useEffect(() => {
     setLoadError(null);
@@ -84,6 +89,16 @@ export default function BusinessPlanPage() {
           : s,
       ),
     });
+  };
+
+  const mergedDocument = useMemo(
+    () => (draft ? mergeDraftToDocument(draft) : null),
+    [draft],
+  );
+
+  const jumpToSectionEdit = (sectionId: string) => {
+    setActiveId(sectionId);
+    setViewMode("sections");
   };
 
   if (loadError) {
@@ -207,13 +222,55 @@ export default function BusinessPlanPage() {
         fullGenerateLabel="전체 사업계획서 AI 생성"
       />
 
-      <SectionCard title="항목별 에디터" className="mt-6">
-        <BusinessPlanEditor
-          sections={draft.sections}
-          activeId={activeId}
-          onSelect={setActiveId}
-          onChange={onChange}
-        />
+      <SectionCard
+        title={viewMode === "sections" ? "항목별 에디터" : "통합 미리보기"}
+        description={
+          viewMode === "sections"
+            ? "섹션별로 편집하고 AI 생성을 실행합니다."
+            : "모든 섹션을 한 문서처럼 연속해서 확인합니다."
+        }
+        className="mt-6"
+      >
+        <div className="mb-4 inline-flex rounded-lg border border-outline-variant/50 bg-surface-container p-1">
+          <button
+            type="button"
+            onClick={() => setViewMode("sections")}
+            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+              viewMode === "sections"
+                ? "bg-white text-primary shadow-sm"
+                : "text-on-surface-variant hover:text-primary"
+            }`}
+          >
+            <Pencil className="h-4 w-4" />
+            섹션 편집
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("preview")}
+            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+              viewMode === "preview"
+                ? "bg-white text-primary shadow-sm"
+                : "text-on-surface-variant hover:text-primary"
+            }`}
+          >
+            <LayoutList className="h-4 w-4" />
+            통합 보기
+          </button>
+        </div>
+
+        {viewMode === "sections" ? (
+          <BusinessPlanEditor
+            sections={draft.sections}
+            activeId={activeId}
+            onSelect={setActiveId}
+            onChange={onChange}
+          />
+        ) : mergedDocument ? (
+          <BusinessPlanPreview
+            document={mergedDocument}
+            onJumpToSection={jumpToSectionEdit}
+          />
+        ) : null}
       </SectionCard>
     </div>
   );
