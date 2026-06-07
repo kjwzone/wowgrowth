@@ -1,4 +1,9 @@
 import type { ProgramCategory, SupportProgram } from "@/types";
+import {
+  isHtmlContent,
+  parseBizinfoFields,
+  sanitizeBizinfoHtml,
+} from "@/lib/bizinfo-content";
 
 type BizinfoApiProgram = {
   id: string;
@@ -11,7 +16,9 @@ type BizinfoApiProgram = {
   daysLeft: number;
   status: SupportProgram["status"];
   summary: string;
-  target: string[];
+  trgetNm?: string;
+  fileNm?: string;
+  reqstMthPapersCn?: string;
   applicationPeriod: string;
   externalUrl: string;
   source: "bizinfo";
@@ -35,27 +42,43 @@ const toProgramCategory = (category: string): ProgramCategory => {
     : "기타";
 };
 
-export const mapBizinfoToSupportProgram = (item: BizinfoApiProgram): SupportProgram => ({
-  id: item.id,
-  title: item.title,
-  agency: item.agency,
-  category: toProgramCategory(item.category),
-  region: item.region,
-  supportAmount: item.supportAmount,
-  deadline: item.deadline,
-  daysLeft: item.daysLeft,
-  matchScore: null,
-  status: item.status,
-  summary: item.summary,
-  target: item.target.length > 0 ? item.target : ["공고 원문에서 확인"],
-  benefits: ["지원 내용은 기업마당 공고 원문을 확인하세요."],
-  period: item.applicationPeriod,
-  documents: ["사업계획서 등 — 공고별 상이"],
-  aiFitAnalysis: "기업마당 실시간 공고입니다. AI 매칭 분석은 로그인·기업정보 등록 후 제공됩니다.",
-  strategyTip: "기업마당 원문에서 평가 기준·제출 서류·자격 요건을 확인하세요.",
-  source: "bizinfo",
-  externalUrl: item.externalUrl,
-});
+export const mapBizinfoToSupportProgram = (item: BizinfoApiProgram): SupportProgram => {
+  const parsed = parseBizinfoFields({
+    summaryHtml: item.summary,
+    trgetNm: item.trgetNm,
+    fileNm: item.fileNm,
+    reqstMthPapersCn: item.reqstMthPapersCn,
+  });
+  const summaryHtml = isHtmlContent(item.summary)
+    ? sanitizeBizinfoHtml(item.summary)
+    : undefined;
+
+  return {
+    id: item.id,
+    title: item.title,
+    agency: item.agency,
+    category: toProgramCategory(item.category),
+    region: item.region,
+    supportAmount: item.supportAmount,
+    deadline: item.deadline,
+    daysLeft: item.daysLeft,
+    matchScore: null,
+    status: item.status,
+    summary: parsed.summaryPlain,
+    summaryHtml,
+    target: parsed.targets,
+    benefits: parsed.benefits,
+    period: item.applicationPeriod,
+    documents: parsed.documents,
+    aiFitAnalysis:
+      "기업마당 실시간 공고입니다. AI 매칭 분석은 로그인·기업정보 등록 후 제공됩니다.",
+    strategyTip: item.reqstMthPapersCn?.trim()
+      ? `신청 방법: ${item.reqstMthPapersCn.trim()}. 기업마당 원문에서 평가 기준·제출 서류·자격 요건을 확인하세요.`
+      : "기업마당 원문에서 평가 기준·제출 서류·자격 요건을 확인하세요.",
+    source: "bizinfo",
+    externalUrl: item.externalUrl,
+  };
+};
 
 /** frontend-v15 배포 도메인(kd4u)의 same-origin Vercel Function만 사용 */
 export const buildBizinfoApiUrl = (params: {

@@ -65,10 +65,6 @@ const mapItem = (item) => {
   const { deadline, daysLeft, period } = parseDeadline(applicationRaw);
   const summary = item.bsnsSumryCn ?? item.description ?? "";
   const externalUrl = item.pblancUrl ?? item.link ?? "";
-  const target = (item.trgetNm ?? "")
-    .split(/[,·/|]/)
-    .map((part) => part.trim())
-    .filter(Boolean);
 
   return {
     id: `bizinfo-${pblancId || title}`,
@@ -82,7 +78,9 @@ const mapItem = (item) => {
     daysLeft: Math.max(daysLeft, -999),
     status: resolveStatus(daysLeft),
     summary: summary || "상세 내용은 기업마당 원문을 확인하세요.",
-    target: target.length > 0 ? target : ["공고 원문에서 확인"],
+    trgetNm: item.trgetNm ?? "",
+    fileNm: item.fileNm ?? "",
+    reqstMthPapersCn: item.reqstMthPapersCn ?? "",
     applicationPeriod: period,
     externalUrl,
     source: "bizinfo",

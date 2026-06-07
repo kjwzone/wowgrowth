@@ -23,6 +23,7 @@ export type SupportProgram = {
   matchScore: number | null;
   status: ProgramStatus;
   summary: string;
+  summaryHtml?: string;
   target: string[];
   benefits: string[];
   period: string;

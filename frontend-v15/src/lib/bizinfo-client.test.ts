@@ -25,8 +25,10 @@ describe("bizinfo-client", () => {
       deadline: "2026-12-31",
       daysLeft: 10,
       status: "모집중",
-      summary: "요약",
-      target: ["스타트업"],
+      summary: "<p>요약 본문</p><p>☞ 대상 기업</p><p>- 스타트업</p>",
+      trgetNm: "중소기업",
+      fileNm: "신청서.hwp",
+      reqstMthPapersCn: "온라인 접수",
       applicationPeriod: "20260101 ~ 20261231",
       externalUrl: "https://www.bizinfo.go.kr",
       source: "bizinfo",
@@ -34,6 +36,10 @@ describe("bizinfo-client", () => {
 
     expect(program.source).toBe("bizinfo");
     expect(program.matchScore).toBeNull();
+    expect(program.summaryHtml).toContain("요약 본문");
+    expect(program.target).toContain("중소기업");
+    expect(program.documents).toContain("신청서.hwp");
+    expect(program.benefits.some((b) => b.includes("온라인"))).toBe(true);
     expect(program.externalUrl).toBe("https://www.bizinfo.go.kr");
   });
 });

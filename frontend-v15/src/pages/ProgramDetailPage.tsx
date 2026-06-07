@@ -5,6 +5,7 @@ import { PageHeader, SectionCard } from "@/components/ui/PageHeader";
 import { ScoreBadge } from "@/components/ui/ScoreBadge";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AiAgentPanel } from "@/components/ui/AiAgentPanel";
+import { BizinfoHtmlContent } from "@/components/ui/BizinfoHtmlContent";
 import { programApi } from "@/lib/api";
 import type { SupportProgram } from "@/types";
 
@@ -44,7 +45,13 @@ export default function ProgramDetailPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <SectionCard title="공고 요약">
-            <p className="text-sm leading-relaxed text-on-surface-variant">{program.summary}</p>
+            {program.summaryHtml ? (
+              <BizinfoHtmlContent html={program.summaryHtml} />
+            ) : (
+              <p className="text-sm leading-relaxed text-on-surface-variant whitespace-pre-line">
+                {program.summary}
+              </p>
+            )}
           </SectionCard>
 
           <SectionCard title="지원 대상">
