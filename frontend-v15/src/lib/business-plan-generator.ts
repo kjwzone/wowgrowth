@@ -1,8 +1,9 @@
 import { companyProfile } from "@/data/company";
 import {
-  buildDefaultBudgetExecutionPlan,
-  parseGovSupportMaxKrw,
+  buildBudgetSectionContentFromProgram,
+  parseBudgetConstraintsFromProgram,
   serializeBudgetExecutionPlan,
+  buildBudgetExecutionPlanFromProgram,
 } from "@/lib/budget-execution-plan-model";
 import { matchingResults } from "@/data/matching";
 import { getProgramById } from "@/data/programs";
@@ -44,16 +45,17 @@ const buildMatchingContext = (programId: string) =>
   matchingResults.find((m) => m.programId === programId);
 
 const buildBudgetSectionContent = (ctx: GenerationContext): string => {
-  const govMax = parseGovSupportMaxKrw(ctx.program?.supportAmount);
-  const plan = buildDefaultBudgetExecutionPlan({
-    govSupportMaxKrw: govMax,
-    companyName: ctx.company.name,
-  });
-  return [
-    serializeBudgetExecutionPlan(plan),
-    `■ 지원 한도: ${ctx.program?.supportAmount ?? "공고 기준"}`,
-    "※ budget-designer 스킬 기준 비목·자부담률 [확인 필요] 항목은 제출 전 재검토",
-  ].join("\n");
+  if (!ctx.program) {
+    const constraints = parseBudgetConstraintsFromProgram({});
+    return serializeBudgetExecutionPlan(
+      buildBudgetExecutionPlanFromProgram({
+        constraints,
+        companyName: ctx.company.name,
+        product: ctx.company.product,
+      }),
+    );
+  }
+  return buildBudgetSectionContentFromProgram(ctx.program, ctx.company);
 };
 
 const sectionContentBuilders: Record<

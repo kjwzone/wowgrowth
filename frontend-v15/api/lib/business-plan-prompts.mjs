@@ -1,3 +1,5 @@
+import { buildBudgetConstraintsForPrompt } from "./budget-from-program.mjs";
+
 /** @see src/lib/ai/prompts/startup-package-plan-instructions.ts — sync target */
 export const REQUIRED_SECTION_TITLES = [
   "일반현황",
@@ -24,6 +26,9 @@ export const STARTUP_PACKAGE_PLAN_INSTRUCTIONS = `
 ■ [사업비 요약] 일반지역|총액|정부|현금|현물
 ■ [비목] 비목명|집행계획|정부|현금|현물|합계
 형식 포함
+- startup_input.사업비_제약(budget_constraints)의 govSupportMaxKrw·cashMatchRatio·programKind·eligibleCategories를 반드시 반영
+- 공고 지원한도를 초과하지 말 것 · 비목은 공고 유형(수출/R&D/창업)에 맞게 작성
+- 획일화된 1억+143백만 템플릿 금지
 
 성장전략 content에는:
 ■ TAM/SAM/SOM: ... / ... / ...
@@ -37,6 +42,8 @@ export const buildStartupInputFromRequest = (body) => {
   const { company, program, matching, diagnosis } = body;
   const samplePdf = process.env.BUSINESS_PLAN_SAMPLE_PDF_URL ?? "";
   const formPdf = process.env.BUSINESS_PLAN_FORM_PDF_URL ?? "";
+
+  const budgetConstraints = buildBudgetConstraintsForPrompt(program);
 
   return {
     기업_일반현황: {
@@ -67,6 +74,7 @@ export const buildStartupInputFromRequest = (body) => {
       period: program?.period,
       deadline: program?.deadline,
     },
+    사업비_제약: budgetConstraints,
     attachments: {
       passed_sample_pdf: samplePdf || "미설정 — 양식 템플릿 적용",
       government_form_pdf: formPdf || "공고 원문·양식 개요",

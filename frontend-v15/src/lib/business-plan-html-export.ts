@@ -237,17 +237,22 @@ const renderSectionVisualHtml = (title: string, content: string): string => {
 
 const renderReferenceImages = (images: ReferenceImage[]): string =>
   `<section class="references">
-    <h2>참고 이미지 (출처 표기)</h2>
+    <h2>참고 이미지</h2>
     <div class="ref-grid">
       ${images
         .map(
           (img) =>
             `<figure class="ref-card">
-              <img src="${escapeHtml(img.url)}" alt="${escapeHtml(img.caption)}" loading="lazy" />
+              ${
+                img.svg
+                  ? `<div class="ref-svg">${img.svg}</div>`
+                  : img.url
+                    ? `<img src="${escapeHtml(img.url)}" alt="${escapeHtml(img.caption)}" loading="lazy" />`
+                    : ""
+              }
               <figcaption>
                 <strong>${escapeHtml(img.caption)}</strong><br />
-                출처: <a href="${escapeHtml(img.sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(img.source)}</a>
-                · ${escapeHtml(img.license)}
+                ${escapeHtml(img.source)} · ${escapeHtml(img.license)}
               </figcaption>
             </figure>`,
         )
@@ -307,6 +312,8 @@ const BASE_STYLES = `
   .ref-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
   .ref-card { margin: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
   .ref-card img { width: 100%; height: 160px; object-fit: cover; display: block; }
+  .ref-svg { padding: .75rem; background: #fff; min-height: 200px; }
+  .ref-svg svg { width: 100%; height: auto; display: block; }
   .ref-card figcaption { padding: .75rem; font-size: .75rem; color: #475569; }
   .ref-card a { color: #0040e0; }
 `;

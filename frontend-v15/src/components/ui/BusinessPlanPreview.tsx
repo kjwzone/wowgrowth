@@ -1,6 +1,7 @@
 import { Download, FileText } from "lucide-react";
 import type { BusinessPlanDocument } from "@/lib/business-plan-document";
 import { downloadBusinessPlanHtml } from "@/lib/business-plan-html-export";
+import { companyProfile } from "@/data/company";
 import { selectReferenceImages } from "@/lib/business-plan-reference-images";
 import { BusinessPlanSectionVisual } from "@/components/ui/BusinessPlanSectionVisual";
 import { ReferenceImageGallery } from "@/components/ui/ReferenceImageGallery";
@@ -13,7 +14,11 @@ export const BusinessPlanPreview = ({
   document: BusinessPlanDocument;
   onJumpToSection?: (sectionId: string) => void;
 }) => {
-  const referenceImages = selectReferenceImages(document.programTitle);
+  const referenceImages = selectReferenceImages(
+    document.programTitle,
+    companyProfile.name,
+    companyProfile.product,
+  );
 
   return (
     <div className="space-y-6">

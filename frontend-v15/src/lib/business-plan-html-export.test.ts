@@ -51,13 +51,14 @@ describe("business-plan-html-export", () => {
   it("exports HTML document with tables and reference images", () => {
     const draft = createEmptyDraft("prog-001");
     const document = mergeDraftToDocument(draft);
-    const images = selectReferenceImages("초기창업패키지", "창업");
+    const images = selectReferenceImages("초기창업패키지", "와우그로스(주)", "AI SaaS");
     const html = exportBusinessPlanHtml(document, images);
 
     expect(html).toContain("<!DOCTYPE html>");
     expect(html).toContain("kv-table");
     expect(html).toContain("참고 이미지");
-    expect(html).toContain("Wikimedia Commons");
+    expect(html).toContain("BM 구성도");
+    expect(html).toContain("<svg");
     expect(images.length).toBe(3);
   });
 });

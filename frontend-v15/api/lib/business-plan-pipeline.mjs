@@ -4,6 +4,7 @@ import {
   buildFullPlanPrompt,
   buildStartupInputFromRequest,
 } from "../lib/business-plan-prompts.mjs";
+import { enrichPlanBudgetFromProgram } from "../lib/budget-from-program.mjs";
 
 const mergeSection = (plan, sectionTitle, content) => ({
   ...plan,
@@ -22,7 +23,7 @@ export const runFast = async (body) => {
     tier: "fast",
   });
   return {
-    plan: data,
+    plan: enrichPlanBudgetFromProgram(data, body),
     model,
     stages: [{ stage: "generate", label: "AI 초안 생성", status: "done" }],
   };
@@ -66,7 +67,7 @@ export const runPipeline = async (body, onStage) => {
   await tick(1, "done");
 
   return {
-    plan,
+    plan: enrichPlanBudgetFromProgram(plan, body),
     model,
     stages: stages.map((s) => ({ ...s, status: "done" })),
     announcement,

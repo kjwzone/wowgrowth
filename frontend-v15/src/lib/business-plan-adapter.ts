@@ -1,4 +1,9 @@
 import { sectionIdFromTitle } from "@/lib/business-plan-sections";
+import {
+  buildBudgetSectionContentFromProgram,
+  isGenericBudgetContent,
+} from "@/lib/budget-execution-plan-model";
+import { companyProfile } from "@/data/company";
 import { selectBusinessPlanSkill, PROMPT_VERSION } from "@/lib/business-plan-skill";
 import type {
   BusinessPlanDraft,
@@ -41,12 +46,21 @@ export const adaptApiPlanToDraft = (
   },
 ): BusinessPlanDraft => {
   const skillId = selectBusinessPlanSkill(params.program);
-  const sections: BusinessPlanSection[] = plan.sections.map((section) => ({
-    id: sectionIdFromTitle(section.section_title),
-    title: section.section_title,
-    content: section.content,
-    completeness: sectionCompleteness(section.content),
-  }));
+  const sections: BusinessPlanSection[] = plan.sections.map((section) => {
+    let content = section.content;
+    if (
+      section.section_title.includes("사업비") &&
+      isGenericBudgetContent(content)
+    ) {
+      content = buildBudgetSectionContentFromProgram(params.program, companyProfile);
+    }
+    return {
+      id: sectionIdFromTitle(section.section_title),
+      title: section.section_title,
+      content,
+      completeness: sectionCompleteness(content),
+    };
+  });
 
   const overallCompleteness =
     sections.length === 0
