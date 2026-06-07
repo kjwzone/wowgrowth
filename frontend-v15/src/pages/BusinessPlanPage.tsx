@@ -1,17 +1,21 @@
 import { useEffect, useState } from "react";
-import { Download, Send } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, Send } from "lucide-react";
 import { PageHeader, SectionCard } from "@/components/ui/PageHeader";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { AiAgentPanel } from "@/components/ui/AiAgentPanel";
 import { BusinessPlanEditor } from "@/components/ui/BusinessPlanEditor";
 import { BUSINESS_PLAN_SKILL_LABELS } from "@/lib/business-plan-skill";
-import { businessPlanApi } from "@/lib/api";
+import { businessPlanApi, type SubmissionCheckResult } from "@/lib/api";
 import type { BusinessPlanDraft } from "@/types";
 
 export default function BusinessPlanPage() {
   const [draft, setDraft] = useState<BusinessPlanDraft | null>(null);
   const [activeId, setActiveId] = useState("");
   const [aiState, setAiState] = useState<"idle" | "generating" | "done">("idle");
+  const [submitting, setSubmitting] = useState(false);
+  const [submissionResult, setSubmissionResult] = useState<SubmissionCheckResult | null>(
+    null,
+  );
 
   useEffect(() => {
     void businessPlanApi.get().then((d) => {
@@ -32,10 +36,21 @@ export default function BusinessPlanPage() {
   const generateFullDraft = async () => {
     if (!draft) return;
     setAiState("generating");
+    setSubmissionResult(null);
     const updated = await businessPlanApi.generateFullDraft(setDraft);
     setDraft(updated);
     setAiState("done");
     setTimeout(() => setAiState("idle"), 1500);
+  };
+
+  const prepareSubmission = async () => {
+    if (!draft || submitting) return;
+    setSubmitting(true);
+    setSubmissionResult(null);
+    const { draft: updated, result } = await businessPlanApi.prepareForSubmission();
+    setDraft(updated);
+    setSubmissionResult(result);
+    setSubmitting(false);
   };
 
   const onChange = (id: string, content: string) => {
@@ -77,10 +92,17 @@ export default function BusinessPlanPage() {
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-on-secondary"
+              onClick={() => void prepareSubmission()}
+              disabled={submitting || draft.status === "ready"}
+              title={
+                draft.status === "ready"
+                  ? "이미 제출 준비가 완료되었습니다"
+                  : "submission-verifier 스킬로 제출 전 검증을 실행합니다"
+              }
+              className="inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-on-secondary disabled:opacity-60"
             >
               <Send className="h-4 w-4" />
-              제출 준비
+              {submitting ? "검증 중..." : draft.status === "ready" ? "제출 준비 완료" : "제출 준비"}
             </button>
           </div>
         }
@@ -103,6 +125,45 @@ export default function BusinessPlanPage() {
           <ProgressBar value={draft.overallCompleteness} label="전체 완성도" />
         </SectionCard>
       </div>
+
+      {submissionResult ? (
+        <div
+          className={`mb-6 rounded-xl border p-4 ${
+            submissionResult.ok
+              ? "border-secondary/30 bg-secondary/5"
+              : "border-error/30 bg-error/5"
+          }`}
+        >
+          <p className="flex items-center gap-2 text-sm font-semibold text-primary">
+            {submissionResult.ok ? (
+              <>
+                <CheckCircle2 className="h-4 w-4 text-secondary" />
+                제출 준비 완료 — 관리자 검수 대기열에 등록되었습니다
+              </>
+            ) : (
+              <>
+                <AlertCircle className="h-4 w-4 text-error" />
+                제출 준비 불가 — 아래 항목을 보완하세요
+              </>
+            )}
+          </p>
+          <ul className="mt-3 space-y-1.5 text-sm text-on-surface-variant">
+            {submissionResult.checklist.map((item) => (
+              <li key={item.item} className="flex items-start gap-2">
+                {item.pass ? (
+                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-secondary" />
+                ) : (
+                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-error" />
+                )}
+                <span>
+                  {item.item}
+                  {item.note ? ` — ${item.note}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <AiAgentPanel
         message={

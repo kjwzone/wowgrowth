@@ -15,6 +15,7 @@ import {
   runPipelineStep,
 } from "@/lib/business-plan-generator";
 import { getPipelineForSkill } from "@/lib/business-plan-skill";
+import { prepareForSubmission } from "@/lib/business-plan-submission";
 import type {
   AdminReviewItem,
   BusinessPlanDraft,
@@ -25,6 +26,9 @@ import type {
   SupportProgram,
   UserSession,
 } from "@/types";
+import type { SubmissionCheckResult } from "@/lib/business-plan-submission";
+
+export type { SubmissionCheckResult };
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -102,6 +106,19 @@ export const businessPlanApi = {
     draftCache = { ...draftCache, activeAgent: undefined };
     onProgress?.(draftCache);
     return draftCache;
+  },
+
+  /** submission-verifier 스킬 — 제출 전 체크리스트 검증 후 ready 상태로 전환 */
+  prepareForSubmission: async (): Promise<{
+    draft: BusinessPlanDraft;
+    result: SubmissionCheckResult;
+  }> => {
+    await delay(600);
+    const { draft, result } = prepareForSubmission(draftCache);
+    if (result.ok) {
+      draftCache = draft;
+    }
+    return { draft: result.ok ? draft : draftCache, result };
   },
 };
 
