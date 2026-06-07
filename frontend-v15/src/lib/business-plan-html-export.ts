@@ -5,9 +5,9 @@ import {
   parseKeyValueItems,
   parsePercentages,
   parseTagBlocks,
-  parseTamSamSom,
 } from "@/lib/business-plan-content-parser";
 import type { ReferenceImage } from "@/lib/business-plan-reference-images";
+import { buildTamSamSomTiers } from "@/lib/tam-sam-som-model";
 
 const escapeHtml = (text: string): string =>
   text
@@ -50,16 +50,50 @@ const renderBudgetBars = (content: string): string => {
     .join("")}</div>`;
 };
 
-const renderTamBars = (content: string): string => {
-  const data = parseTamSamSom(content);
-  if (!data) return "";
-  const max = Math.max(...data.map((d) => d.value));
-  return `<div class="bar-chart">${data
-    .map((item) => {
-      const width = Math.round((item.value / max) * 100);
-      return `<div class="bar-row"><span class="bar-label">${item.label}</span><div class="bar-track"><div class="bar-fill tam" style="width:${width}%"></div></div><span class="bar-value">${item.value}</span></div>`;
+const TAM_RING_COLORS: Record<string, string> = {
+  tam: "#031635",
+  sam: "#0040e0",
+  som: "#93b4f4",
+};
+
+const renderTamSamSomDiagram = (content: string): string => {
+  const tiers = buildTamSamSomTiers(content);
+  if (!tiers) return "";
+
+  const svg = `<div class="tam-diagram-svg" aria-hidden="true">
+    <svg viewBox="0 0 280 160" xmlns="http://www.w3.org/2000/svg">
+      <path d="M 20 140 A 120 120 0 0 1 260 140 Z" fill="${TAM_RING_COLORS.tam}" stroke="#021028" stroke-width="1"/>
+      <path d="M 55 140 A 85 85 0 0 1 225 140 Z" fill="${TAM_RING_COLORS.sam}" stroke="#0030b0" stroke-width="1"/>
+      <path d="M 90 140 A 50 50 0 0 1 190 140 Z" fill="${TAM_RING_COLORS.som}" stroke="#5b8def" stroke-width="1"/>
+      <text x="140" y="72" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">TAM</text>
+      <text x="140" y="95" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">SAM</text>
+      <text x="140" y="118" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">SOM</text>
+    </svg>
+  </div>`;
+
+  const cards = tiers
+    .map((tier) => {
+      const valueHtml =
+        tier.valueLabel !== "—"
+          ? `<p class="tam-value">추정 규모: <strong>${escapeHtml(tier.valueLabel)}</strong></p>`
+          : "";
+      return `<div class="tam-card" style="border-left-color:${TAM_RING_COLORS[tier.key]}">
+        <div class="tam-card-head">
+          <span class="tam-acronym" style="color:${TAM_RING_COLORS[tier.key]}">${escapeHtml(tier.acronym)}</span>
+          <span class="tam-title">${escapeHtml(tier.titleKo)}</span>
+          <span class="tam-title-en">(${escapeHtml(tier.titleEn)})</span>
+        </div>
+        <p class="tam-focus">주요 초점: ${escapeHtml(tier.focusKo)}</p>
+        <p class="tam-example"><strong>예시:</strong> ${escapeHtml(tier.example)}</p>
+        ${valueHtml}
+      </div>`;
     })
-    .join("")}</div>`;
+    .join("");
+
+  return `<div class="tam-diagram">
+    <p class="tam-diagram-label">TAM / SAM / SOM 시장 규모 분석</p>
+    <div class="tam-diagram-grid">${svg}<div class="tam-cards">${cards}</div></div>
+  </div>`;
 };
 
 const renderBullets = (content: string): string => {
@@ -79,7 +113,7 @@ const renderSectionVisualHtml = (title: string, content: string): string => {
     return `${renderBudgetBars(content)}${renderBullets(content)}`;
   }
   if (title.includes("성장전략")) {
-    return `${renderTamBars(content)}${renderBullets(content)}`;
+    return `${renderTamSamSomDiagram(content)}${renderBullets(content)}`;
   }
   return renderBullets(content);
 };
@@ -122,6 +156,20 @@ const BASE_STYLES = `
   .bar-track { height: 10px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
   .bar-fill { height: 100%; background: #0040e0; border-radius: 999px; }
   .bar-fill.tam { background: #031635; }
+  .tam-diagram { margin: 1rem 0 1.25rem; }
+  .tam-diagram-label { font-size: .75rem; font-weight: 600; color: #64748b; margin-bottom: .75rem; }
+  .tam-diagram-grid { display: grid; grid-template-columns: minmax(200px, 260px) 1fr; gap: 1.5rem; align-items: center; }
+  .tam-diagram-svg svg { width: 100%; max-width: 280px; height: auto; display: block; margin: 0 auto; }
+  .tam-cards { display: flex; flex-direction: column; gap: 1rem; }
+  .tam-card { border: 1px solid #e2e8f0; border-left-width: 4px; border-radius: 12px; padding: 1rem; background: #fff; }
+  .tam-card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .375rem .5rem; }
+  .tam-acronym { font-size: 1.125rem; font-weight: 700; }
+  .tam-title { font-size: .875rem; font-weight: 600; color: #031635; }
+  .tam-title-en { font-size: .75rem; color: #64748b; }
+  .tam-focus { margin: .5rem 0 0; font-size: .75rem; font-weight: 600; color: #0040e0; }
+  .tam-example { margin: .5rem 0 0; font-size: .875rem; color: #475569; line-height: 1.5; }
+  .tam-value { margin: .375rem 0 0; font-size: .75rem; color: #64748b; }
+  @media (max-width: 640px) { .tam-diagram-grid { grid-template-columns: 1fr; } }
   .bullet-list { padding-left: 1.25rem; font-size: .875rem; }
   .bullet-list li { margin-bottom: .375rem; }
   pre { white-space: pre-wrap; font-size: .875rem; background: #f8fafc; padding: 1rem; border-radius: 8px; }

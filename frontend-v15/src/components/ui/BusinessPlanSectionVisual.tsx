@@ -2,23 +2,19 @@ import {
   Cell,
   Pie,
   PieChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
-  YAxis,
 } from "recharts";
+import { TamSamSomDiagram } from "@/components/ui/TamSamSomDiagram";
 import {
   parseBulletItems,
   parseContentLines,
   parseKeyValueItems,
   parsePercentages,
   parseTagBlocks,
-  parseTamSamSom,
   parseTimelinePhases,
 } from "@/lib/business-plan-content-parser";
+import { buildTamSamSomTiers } from "@/lib/tam-sam-som-model";
 
 const CHART_COLORS = ["#0040e0", "#031635", "#5b8def", "#93b4f4", "#c5d7fa"];
 
@@ -105,20 +101,6 @@ const BudgetPieChart = ({ data }: { data: { name: string; value: number }[] }) =
         </li>
       ))}
     </ul>
-  </div>
-);
-
-const TamBarChart = ({ data }: { data: { label: string; value: number }[] }) => (
-  <div className="h-52">
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} layout="vertical" margin={{ left: 8, right: 16 }}>
-        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-        <XAxis type="number" tick={{ fontSize: 11 }} />
-        <YAxis type="category" dataKey="label" width={48} tick={{ fontSize: 11 }} />
-        <Tooltip />
-        <Bar dataKey="value" fill="#0040e0" radius={[0, 4, 4, 0]} />
-      </BarChart>
-    </ResponsiveContainer>
   </div>
 );
 
@@ -234,14 +216,16 @@ export const BusinessPlanSectionVisual = ({
   }
 
   if (sectionTitle.includes("성장전략")) {
-    const tam = parseTamSamSom(content);
+    const tamTiers = buildTamSamSomTiers(content);
     const gtm = bullets.find((b) => /GTM|채널|BM/i.test(b));
     return (
       <div className="space-y-4">
-        {tam ? (
+        {tamTiers ? (
           <div>
-            <p className="mb-2 text-xs font-medium text-on-surface-variant">TAM / SAM / SOM</p>
-            <TamBarChart data={tam} />
+            <p className="mb-3 text-xs font-medium text-on-surface-variant">
+              TAM / SAM / SOM 시장 규모 분석
+            </p>
+            <TamSamSomDiagram tiers={tamTiers} />
           </div>
         ) : null}
         {gtm ? (
