@@ -9,6 +9,7 @@ import { BusinessPlanPreview } from "@/components/ui/BusinessPlanPreview";
 import { BUSINESS_PLAN_SKILL_LABELS } from "@/lib/business-plan-skill";
 import { mergeDraftToDocument } from "@/lib/business-plan-document";
 import { downloadBusinessPlanHtml } from "@/lib/business-plan-html-export";
+import { companyProfile } from "@/data/company";
 import { selectReferenceImages } from "@/lib/business-plan-reference-images";
 import { businessPlanApi, type SubmissionCheckResult } from "@/lib/api";
 import type { BusinessPlanDraft } from "@/types";
@@ -128,7 +129,11 @@ export default function BusinessPlanPage() {
                 if (mergedDocument) {
                   downloadBusinessPlanHtml(
                     mergedDocument,
-                    selectReferenceImages(mergedDocument.programTitle),
+                    selectReferenceImages(
+                      mergedDocument.programTitle,
+                      companyProfile.name,
+                      companyProfile.product,
+                    ),
                   );
                 }
               }}
