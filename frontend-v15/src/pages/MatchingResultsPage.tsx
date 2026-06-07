@@ -27,7 +27,7 @@ export default function MatchingResultsPage() {
         description="기업 프로필 기반 추천 공고 및 개선 제안"
         action={
           <Link
-            to="/business-plan"
+            to={top ? `/business-plan?programId=${encodeURIComponent(top.programId)}` : "/business-plan"}
             className="inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-on-secondary"
           >
             <FileText className="h-4 w-4" />

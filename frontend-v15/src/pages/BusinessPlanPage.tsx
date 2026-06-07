@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AlertCircle, CheckCircle2, Download, Send } from "lucide-react";
 import { PageHeader, SectionCard } from "@/components/ui/PageHeader";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -9,7 +10,10 @@ import { businessPlanApi, type SubmissionCheckResult } from "@/lib/api";
 import type { BusinessPlanDraft } from "@/types";
 
 export default function BusinessPlanPage() {
+  const [searchParams] = useSearchParams();
+  const programId = searchParams.get("programId");
   const [draft, setDraft] = useState<BusinessPlanDraft | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState("");
   const [aiState, setAiState] = useState<"idle" | "generating" | "done">("idle");
   const [submitting, setSubmitting] = useState(false);
@@ -18,11 +22,23 @@ export default function BusinessPlanPage() {
   );
 
   useEffect(() => {
-    void businessPlanApi.get().then((d) => {
-      setDraft(d);
-      setActiveId(d.sections[0]?.id ?? "");
-    });
-  }, []);
+    setLoadError(null);
+    const load = programId
+      ? businessPlanApi.initForProgram(programId)
+      : businessPlanApi.get();
+
+    void load
+      .then((d) => {
+        setDraft(d);
+        setActiveId(d.sections[0]?.id ?? "");
+      })
+      .catch((error: unknown) => {
+        setDraft(null);
+        setLoadError(
+          error instanceof Error ? error.message : "사업계획서를 불러오지 못했습니다.",
+        );
+      });
+  }, [programId]);
 
   const generateSection = async () => {
     if (!draft || !activeId) return;
@@ -69,6 +85,12 @@ export default function BusinessPlanPage() {
       ),
     });
   };
+
+  if (loadError) {
+    return (
+      <p className="rounded-lg bg-error/10 px-4 py-3 text-sm text-error">{loadError}</p>
+    );
+  }
 
   if (!draft) {
     return <p className="text-on-surface-variant">사업계획서 로딩 중...</p>;

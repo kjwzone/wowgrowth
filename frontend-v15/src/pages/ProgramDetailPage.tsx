@@ -102,7 +102,7 @@ export default function ProgramDetailPage() {
           </SectionCard>
 
           <Link
-            to="/business-plan"
+            to={`/business-plan?programId=${encodeURIComponent(program.id)}`}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-secondary py-3 font-medium text-on-secondary hover:bg-secondary-container"
           >
             <FileText className="h-4 w-4" />

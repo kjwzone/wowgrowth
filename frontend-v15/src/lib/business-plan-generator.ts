@@ -12,7 +12,22 @@ import {
   type BusinessPlanSkillId,
   type PipelineAgentStep,
 } from "@/lib/business-plan-skill";
-import type { BusinessPlanDraft, BusinessPlanSection } from "@/types";
+import type { BusinessPlanDraft, BusinessPlanSection, SupportProgram } from "@/types";
+
+let draftProgramOverride: SupportProgram | undefined;
+
+export const setDraftProgram = (program: SupportProgram | undefined): void => {
+  draftProgramOverride = program;
+};
+
+export const clearDraftProgram = (): void => {
+  draftProgramOverride = undefined;
+};
+
+const resolveProgram = (programId: string): SupportProgram | undefined => {
+  if (draftProgramOverride?.id === programId) return draftProgramOverride;
+  return getProgramById(programId);
+};
 
 const buildMatchingContext = (programId: string) =>
   matchingResults.find((m) => m.programId === programId);
@@ -108,13 +123,13 @@ const sectionContentBuilders: Record<
 
 type GenerationContext = {
   company: typeof companyProfile;
-  program: ReturnType<typeof getProgramById>;
+  program: SupportProgram | undefined;
   matching: ReturnType<typeof buildMatchingContext>;
 };
 
 const buildContext = (programId: string): GenerationContext => ({
   company: companyProfile,
-  program: getProgramById(programId),
+  program: resolveProgram(programId),
   matching: buildMatchingContext(programId),
 });
 
@@ -138,7 +153,7 @@ const buildSection = (
 };
 
 export const createEmptyDraft = (programId: string): BusinessPlanDraft => {
-  const program = getProgramById(programId);
+  const program = resolveProgram(programId);
   const skillId = selectBusinessPlanSkill({
     title: program?.title,
     category: program?.category,

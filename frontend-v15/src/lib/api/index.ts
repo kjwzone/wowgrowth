@@ -17,6 +17,7 @@ import {
   generateSectionContent,
   getPipelineDelayMs,
   runPipelineStep,
+  setDraftProgram,
 } from "@/lib/business-plan-generator";
 import { getPipelineForSkill } from "@/lib/business-plan-skill";
 import { prepareForSubmission } from "@/lib/business-plan-submission";
@@ -75,7 +76,14 @@ export const programApi = {
 
     if (id.startsWith("bizinfo-")) {
       const remote = await fetchBizinfoProgramById(id);
-      return remote ?? undefined;
+      if (remote) {
+        bizinfoProgramCache = [
+          ...bizinfoProgramCache.filter((program) => program.id !== id),
+          remote,
+        ];
+        return remote;
+      }
+      return undefined;
     }
 
     await delay(150);
@@ -105,6 +113,20 @@ export const businessPlanApi = {
   get: async (): Promise<BusinessPlanDraft> => {
     await delay(200);
     return draftCache;
+  },
+
+  /** 공고 상세·매칭 결과에서 선택한 공고로 사업계획서 초안 연동 */
+  initForProgram: async (programId: string): Promise<BusinessPlanDraft> => {
+    const program = await programApi.getById(programId);
+    if (!program) {
+      throw new Error(`공고를 찾을 수 없습니다: ${programId}`);
+    }
+
+    setDraftProgram(program);
+    const draft = createEmptyDraft(programId);
+    draftCache = draft;
+    await delay(150);
+    return draft;
   },
 
   /** business-plan-writer / gov-funding-plan 스킬 파이프라인 시뮬레이션 */
