@@ -1,14 +1,40 @@
 import { describe, expect, it } from "vitest";
-import { adminReviewItems } from "@/data/adminReview";
-import { buildAdminDashboardSummary } from "@/lib/admin-dashboard";
+import {
+  countJobStatuses,
+  countProgramStatuses,
+} from "@/lib/admin-dashboard";
 
 describe("admin-dashboard", () => {
-  it("summarizes review queue counts", () => {
-    const summary = buildAdminDashboardSummary(adminReviewItems);
+  it("counts program statuses", () => {
+    const counts = countProgramStatuses([
+      { status: "published" },
+      { status: "published" },
+      { status: "draft" },
+      { status: "closed" },
+      { status: "unknown" },
+    ]);
 
-    expect(summary.totalSubmissions).toBe(4);
-    expect(summary.pending).toBe(1);
-    expect(summary.approved).toBe(1);
-    expect(summary.recentSubmissions).toHaveLength(4);
+    expect(counts).toEqual({
+      total: 5,
+      published: 2,
+      draft: 1,
+      closed: 1,
+    });
+  });
+
+  it("counts ai job statuses", () => {
+    const counts = countJobStatuses([
+      { status: "failed" },
+      { status: "succeeded" },
+      { status: "running" },
+    ]);
+
+    expect(counts).toEqual({
+      total: 3,
+      failed: 1,
+      succeeded: 1,
+      running: 1,
+      queued: 0,
+    });
   });
 });

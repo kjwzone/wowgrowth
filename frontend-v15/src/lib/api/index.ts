@@ -18,7 +18,7 @@ import {
   pipelineStepsFromApiStages,
 } from "@/lib/business-plan-adapter";
 import { buildAiContext } from "@/lib/business-plan-ai-context";
-import { buildAdminDashboardSummary } from "@/lib/admin-dashboard";
+import { fetchAdminDashboardSummary } from "@/lib/admin-dashboard";
 import { buildCompanyDiagnosisReport } from "@/lib/company-diagnosis";
 import { businessPlanAiClient, isAiFallbackError } from "@/lib/business-plan-ai-client";
 import {
@@ -311,11 +311,7 @@ export const diagnosisReportApi = {
 };
 
 export const adminDashboardApi = {
-  getSummary: async () => {
-    await delay(200);
-    const items = await adminApi.listReviews();
-    return buildAdminDashboardSummary(items);
-  },
+  getSummary: fetchAdminDashboardSummary,
 };
 
 export const adminApi = {
