@@ -53,9 +53,3 @@ export const generateJsonWithGemini = async ({
 
   throw lastError ?? new Error("Gemini 호출 실패");
 };
-
-export const jsonResponse = (status, body) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json; charset=utf-8" },
-  });

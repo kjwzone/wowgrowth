@@ -25,9 +25,11 @@ describe("prepare-vercel-output", () => {
     expect(existsSync(staticIndex)).toBe(true);
 
     const config = JSON.parse(readFileSync(configPath, "utf8")) as {
-      routes: Array<{ dest?: string }>;
+      routes: Array<{ src?: string; dest?: string }>;
     };
     expect(config.routes.some((route) => route.dest === "/index.html")).toBe(true);
+    expect(config.routes.some((route) => route.src === "/api/business-plan/health")).toBe(true);
+    expect(config.routes.some((route) => route.src === "/api/lib/gemini-json")).toBe(false);
 
     rmSync(join(root, ".vercel", "output"), { recursive: true, force: true });
   });

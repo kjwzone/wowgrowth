@@ -1,17 +1,24 @@
-import { jsonResponse } from "../lib/gemini-json.mjs";
+import { readJsonBody, sendJson, setCors } from "../lib/http-response.mjs";
 import { runFast, runPipeline } from "../lib/business-plan-pipeline.mjs";
 
-export default async function handler(req) {
+export default async function handler(req, res) {
+  setCors(res);
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
   if (req.method !== "POST") {
-    return jsonResponse(405, { ok: false, message: "Method not allowed" });
+    return sendJson(res, 405, { ok: false, message: "Method not allowed" });
   }
 
   try {
-    const body = await req.json();
+    const body = await readJsonBody(req);
     if (body.probe) {
       const hasKey = Boolean(process.env.GEMINI_API_KEY);
-      return jsonResponse(hasKey ? 200 : 503, { ok: hasKey, gemini: hasKey });
+      return sendJson(res, hasKey ? 200 : 503, { ok: hasKey, gemini: hasKey });
     }
+
     const mode = body.mode === "fast" ? "fast" : "pipeline";
     const stages = [];
 
@@ -22,7 +29,7 @@ export default async function handler(req) {
             stages.push(stage);
           });
 
-    return jsonResponse(200, {
+    return sendJson(res, 200, {
       ok: true,
       mode,
       plan: result.plan,
@@ -31,7 +38,7 @@ export default async function handler(req) {
     });
   } catch (error) {
     const code = error?.code === "NO_GEMINI_KEY" ? 503 : 500;
-    return jsonResponse(code, {
+    return sendJson(res, code, {
       ok: false,
       message: error instanceof Error ? error.message : "생성 실패",
       fallback: code === 503 ? "mock" : undefined,

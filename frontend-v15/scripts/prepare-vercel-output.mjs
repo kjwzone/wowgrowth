@@ -11,6 +11,7 @@ const collectApiHandlers = (dir, base = dir) => {
   return entries.flatMap((entry) => {
     const full = join(dir, entry);
     if (statSync(full).isDirectory()) {
+      if (entry === "lib") return [];
       return collectApiHandlers(full, base);
     }
     if (entry.endsWith(".mjs")) {
