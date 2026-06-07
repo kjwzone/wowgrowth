@@ -6,8 +6,10 @@ import DashboardPage from "@/pages/DashboardPage";
 import ProgramsPage from "@/pages/ProgramsPage";
 import ProgramDetailPage from "@/pages/ProgramDetailPage";
 import CompanyProfilePage from "@/pages/CompanyProfilePage";
+import CompanyDiagnosisReportPage from "@/pages/CompanyDiagnosisReportPage";
 import MatchingResultsPage from "@/pages/MatchingResultsPage";
 import BusinessPlanPage from "@/pages/BusinessPlanPage";
+import AdminDashboardPage from "@/pages/AdminDashboardPage";
 import AdminReviewPage from "@/pages/AdminReviewPage";
 
 export const router = createBrowserRouter([
@@ -20,8 +22,10 @@ export const router = createBrowserRouter([
       { path: "/programs", element: <ProgramsPage /> },
       { path: "/programs/:id", element: <ProgramDetailPage /> },
       { path: "/company-profile", element: <CompanyProfilePage /> },
+      { path: "/company-diagnosis", element: <CompanyDiagnosisReportPage /> },
       { path: "/matching-results", element: <MatchingResultsPage /> },
       { path: "/business-plan", element: <BusinessPlanPage /> },
+      { path: "/admin/dashboard", element: <AdminDashboardPage /> },
       { path: "/admin/review", element: <AdminReviewPage /> },
     ],
   },

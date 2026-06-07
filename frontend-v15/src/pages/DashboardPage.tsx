@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   BarChart3,
   ClipboardList,
@@ -33,6 +33,7 @@ const chartData = [
 ];
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [insights, setInsights] = useState<DashboardInsight[]>([]);
   const [closing, setClosing] = useState<SupportProgram[]>([]);
@@ -64,12 +65,13 @@ export default function DashboardPage() {
         title="대시보드"
         description="기업 진단·추천 공고·사업계획서 진행 현황을 한눈에 확인하세요."
         action={
-          <Link
-            to="/matching-results"
-            className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-on-secondary"
+          <button
+            type="button"
+            onClick={() => navigate("/matching-results")}
+            className="inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-on-secondary hover:opacity-90"
           >
             AI 매칭 보기
-          </Link>
+          </button>
         }
       />
 

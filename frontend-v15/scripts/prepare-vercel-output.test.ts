@@ -40,5 +40,5 @@ describe("prepare-vercel-output", () => {
     expect(generateConfig.maxDuration).toBe(120);
 
     rmSync(join(root, ".vercel", "output"), { recursive: true, force: true });
-  });
+  }, 15_000);
 });

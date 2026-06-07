@@ -6,14 +6,17 @@ import { cn } from "@/lib/utils";
 
 export const AppLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const closeMobile = () => setMobileOpen(false);
 
   return (
     <div className="flex min-h-screen bg-surface">
-      <Sidebar />
+      <div className="hidden lg:block">
+        <Sidebar />
+      </div>
       {mobileOpen ? (
         <div
           className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-          onClick={() => setMobileOpen(false)}
+          onClick={closeMobile}
           aria-hidden
         />
       ) : null}
@@ -23,7 +26,7 @@ export const AppLayout = () => {
           mobileOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <Sidebar />
+        <Sidebar onNavigate={closeMobile} />
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onMenuClick={() => setMobileOpen((v) => !v)} />

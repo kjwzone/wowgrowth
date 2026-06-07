@@ -18,6 +18,8 @@ import {
   pipelineStepsFromApiStages,
 } from "@/lib/business-plan-adapter";
 import { buildAiContext } from "@/lib/business-plan-ai-context";
+import { buildAdminDashboardSummary } from "@/lib/admin-dashboard";
+import { buildCompanyDiagnosisReport } from "@/lib/company-diagnosis";
 import { businessPlanAiClient, isAiFallbackError } from "@/lib/business-plan-ai-client";
 import {
   completePipeline,
@@ -296,6 +298,23 @@ export const dashboardApi = {
   getInsights: async (): Promise<DashboardInsight[]> => {
     await delay(150);
     return dashboardInsights;
+  },
+};
+
+export const diagnosisReportApi = {
+  get: async () => {
+    await delay(200);
+    const company = await companyApi.get();
+    const matching = await matchingApi.list();
+    return buildCompanyDiagnosisReport(company, matching);
+  },
+};
+
+export const adminDashboardApi = {
+  getSummary: async () => {
+    await delay(200);
+    const items = await adminApi.listReviews();
+    return buildAdminDashboardSummary(items);
   },
 };
 
