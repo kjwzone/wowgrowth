@@ -7,6 +7,14 @@ import { diagnosisReportApi } from "@/lib/api";
 import type { CompanyDiagnosisReport } from "@/lib/company-diagnosis";
 import { COMMENTARY_SECTIONS } from "@/lib/company-diagnosis";
 
+const formatDiagnosisBasisNote = (generatedAt: string): string => {
+  const [year, month, day] = generatedAt.split("-");
+  if (!year || !month || !day) {
+    return "※ 최근 3개년도 재무제표 데이터를 기반으로 분석합니다.";
+  }
+  return `※ ${year}년 ${month}월 ${day}일 기준 · 최근 3개년도 재무제표 데이터를 기반으로 분석합니다.`;
+};
+
 export default function CompanyDiagnosisReportPage() {
   const [report, setReport] = useState<CompanyDiagnosisReport | null>(null);
 
@@ -55,7 +63,7 @@ export default function CompanyDiagnosisReportPage() {
     <div>
       <PageHeader
         title="기업진단보고서"
-        description="IU.Partners 양식 하네스 — 추출·계산·코멘트·xlsx 6시트 파이프라인 결과 뷰"
+        description={formatDiagnosisBasisNote(report.generatedAt)}
         action={
           <div className="flex flex-wrap gap-2">
             <Link
