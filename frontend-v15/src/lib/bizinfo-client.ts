@@ -17,7 +17,8 @@ type BizinfoApiProgram = {
   source: "bizinfo";
 };
 
-const FETCH_TIMEOUT_MS = 12_000;
+export const DEFAULT_BIZINFO_PAGE_SIZE = 15;
+const FETCH_TIMEOUT_MS = 15_000;
 
 const toProgramCategory = (category: string): ProgramCategory => {
   const allowed: ProgramCategory[] = [
@@ -64,7 +65,7 @@ export const buildBizinfoApiUrl = (params: {
   category?: string;
 }): string => {
   const searchParams = new URLSearchParams();
-  searchParams.set("pageSize", String(params.pageSize ?? 30));
+  searchParams.set("pageSize", String(params.pageSize ?? DEFAULT_BIZINFO_PAGE_SIZE));
   if (params.page) searchParams.set("page", String(params.page));
   if (params.q) searchParams.set("q", params.q);
   if (params.category && params.category !== "전체") {
@@ -94,38 +95,72 @@ type ApiListResponse = {
   error?: { message: string };
 };
 
+export type FetchBizinfoProgramsResult =
+  | { ok: true; items: SupportProgram[]; total: number }
+  | { ok: false; message: string };
+
+const parseApiListResponse = (
+  payload: ApiListResponse,
+): FetchBizinfoProgramsResult => {
+  if (!payload.success || !payload.data?.items?.length) {
+    return {
+      ok: false,
+      message: payload.error?.message ?? "기업마당 공고가 없습니다.",
+    };
+  }
+
+  return {
+    ok: true,
+    items: payload.data.items.map(mapBizinfoToSupportProgram),
+    total: payload.data.total,
+  };
+};
+
+const requestBizinfoPrograms = async (params: {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  category?: string;
+}): Promise<FetchBizinfoProgramsResult> => {
+  try {
+    const response = await fetchWithTimeout(buildBizinfoApiUrl(params));
+    const payload = (await response.json()) as ApiListResponse;
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        message: payload.error?.message ?? `API 오류 (${response.status})`,
+      };
+    }
+
+    return parseApiListResponse(payload);
+  } catch {
+    return { ok: false, message: "기업마당 API 요청 시간 초과" };
+  }
+};
+
 export const fetchBizinfoProgramsFromApi = async (params: {
   page?: number;
   pageSize?: number;
   q?: string;
   category?: string;
-}): Promise<{ items: SupportProgram[]; total: number } | null> => {
-  try {
-    const response = await fetchWithTimeout(buildBizinfoApiUrl(params));
-    if (!response.ok) {
-      return null;
-    }
+}): Promise<FetchBizinfoProgramsResult> => {
+  const pageSize = params.pageSize ?? DEFAULT_BIZINFO_PAGE_SIZE;
+  const first = await requestBizinfoPrograms({ ...params, pageSize });
+  if (first.ok) return first;
 
-    const payload = (await response.json()) as ApiListResponse;
-    if (!payload.success || !payload.data?.items?.length) {
-      return null;
-    }
+  if (pageSize <= 10) return first;
 
-    return {
-      items: payload.data.items.map(mapBizinfoToSupportProgram),
-      total: payload.data.total,
-    };
-  } catch {
-    return null;
-  }
+  const retry = await requestBizinfoPrograms({ ...params, pageSize: 10 });
+  return retry.ok ? retry : first;
 };
 
 export const fetchBizinfoProgramById = async (
   id: string,
 ): Promise<SupportProgram | null> => {
   try {
-    const list = await fetchBizinfoProgramsFromApi({ pageSize: 50 });
-    return list?.items.find((item) => item.id === id) ?? null;
+    const list = await fetchBizinfoProgramsFromApi({ pageSize: 20 });
+    return list.ok ? list.items.find((item) => item.id === id) ?? null : null;
   } catch {
     return null;
   }

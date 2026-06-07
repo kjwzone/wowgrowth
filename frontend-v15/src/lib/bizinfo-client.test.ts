@@ -1,14 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   buildBizinfoApiUrl,
+  DEFAULT_BIZINFO_PAGE_SIZE,
   mapBizinfoToSupportProgram,
 } from "@/lib/bizinfo-client";
 
 describe("bizinfo-client", () => {
   it("builds same-origin API URL (not cross-origin Next.js)", () => {
-    const url = buildBizinfoApiUrl({ pageSize: 10, category: "창업" });
+    const url = buildBizinfoApiUrl({ category: "창업" });
     expect(url.startsWith("/api/bizinfo?")).toBe(true);
     expect(url).not.toContain("wowgrowth.vercel.app");
+    expect(url).toContain(`pageSize=${DEFAULT_BIZINFO_PAGE_SIZE}`);
     expect(url).toContain("category=%EC%B0%BD%EC%97%85");
   });
 

@@ -50,27 +50,21 @@ export const programApi = {
     q?: string;
     category?: string;
   }): Promise<ProgramListResult> => {
-    try {
-      const remote = await fetchBizinfoProgramsFromApi({
-        pageSize: 30,
-        q: params?.q,
-        category: params?.category,
-      });
+    const remote = await fetchBizinfoProgramsFromApi({
+      q: params?.q,
+      category: params?.category,
+    });
 
-      if (remote && remote.items.length > 0) {
-        bizinfoProgramCache = remote.items;
-        return { items: remote.items, source: "bizinfo" };
-      }
-    } catch {
-      // fall through to mock data
+    if (remote.ok) {
+      bizinfoProgramCache = remote.items;
+      return { items: remote.items, source: "bizinfo" };
     }
 
     await delay(200);
     return {
       items: programs,
       source: "mock",
-      message:
-        "기업마당 API를 불러오지 못했습니다. 데모 데이터를 표시합니다. (Vercel BIZINFO_API_KEY 확인)",
+      message: `기업마당 API를 불러오지 못했습니다. 데모 데이터를 표시합니다. (${remote.message})`,
     };
   },
 

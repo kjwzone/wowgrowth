@@ -134,7 +134,7 @@ export default async function handler(req, res) {
         Accept: "application/json",
         "User-Agent": "WOWGrowth-frontend-v15/1.0",
       },
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(25_000),
     });
 
     if (!upstream.ok) {
