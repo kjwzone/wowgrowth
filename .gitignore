@@ -12,3 +12,5 @@ _workspace/
 harness-100/
 .claude/
 *.zip
+__pycache__/
+*.pyc
