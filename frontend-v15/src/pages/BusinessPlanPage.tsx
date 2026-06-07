@@ -8,6 +8,8 @@ import { BusinessPlanEditor } from "@/components/ui/BusinessPlanEditor";
 import { BusinessPlanPreview } from "@/components/ui/BusinessPlanPreview";
 import { BUSINESS_PLAN_SKILL_LABELS } from "@/lib/business-plan-skill";
 import { mergeDraftToDocument } from "@/lib/business-plan-document";
+import { downloadBusinessPlanHtml } from "@/lib/business-plan-html-export";
+import { selectReferenceImages } from "@/lib/business-plan-reference-images";
 import { businessPlanApi, type SubmissionCheckResult } from "@/lib/api";
 import type { BusinessPlanDraft } from "@/types";
 
@@ -122,7 +124,16 @@ export default function BusinessPlanPage() {
           <div className="flex gap-2">
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-lg border border-outline-variant px-4 py-2 text-sm hover:bg-surface-container"
+              onClick={() => {
+                if (mergedDocument) {
+                  downloadBusinessPlanHtml(
+                    mergedDocument,
+                    selectReferenceImages(mergedDocument.programTitle),
+                  );
+                }
+              }}
+              disabled={!mergedDocument}
+              className="inline-flex items-center gap-2 rounded-lg border border-outline-variant px-4 py-2 text-sm hover:bg-surface-container disabled:opacity-60"
             >
               <Download className="h-4 w-4" />
               다운로드
@@ -227,7 +238,7 @@ export default function BusinessPlanPage() {
         description={
           viewMode === "sections"
             ? "섹션별로 편집하고 AI 생성을 실행합니다."
-            : "모든 섹션을 한 문서처럼 연속해서 확인합니다."
+            : "표·차트·인포그래픽으로 통합 HTML 문서를 미리봅니다."
         }
         className="mt-6"
       >
