@@ -42,11 +42,11 @@ export default function DashboardPage() {
       dashboardApi.getStats(),
       dashboardApi.getInsights(),
       programApi.list(),
-    ]).then(([s, i, programs]) => {
+    ]).then(([s, i, programResult]) => {
       setStats(s);
       setInsights(i);
       setClosing(
-        programs
+        programResult.items
           .filter((p) => p.daysLeft <= 14)
           .sort((a, b) => a.daysLeft - b.daysLeft)
           .slice(0, 3),

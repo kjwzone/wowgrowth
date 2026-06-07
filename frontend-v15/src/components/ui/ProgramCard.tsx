@@ -16,6 +16,11 @@ export const ProgramCard = ({ program }: { program: SupportProgram }) => (
           <span className="rounded-full bg-surface-container px-2.5 py-0.5 text-xs text-on-surface-variant">
             {program.category}
           </span>
+          {program.source === "bizinfo" ? (
+            <span className="rounded-full bg-secondary/10 px-2.5 py-0.5 text-xs text-secondary">
+              기업마당
+            </span>
+          ) : null}
         </div>
         <h3 className="mt-2 text-lg font-semibold text-primary">{program.title}</h3>
         <div className="mt-2 flex flex-wrap gap-3 text-sm text-on-surface-variant">
@@ -29,7 +34,9 @@ export const ProgramCard = ({ program }: { program: SupportProgram }) => (
           </span>
           <span className="inline-flex items-center gap-1">
             <Calendar className="h-4 w-4" />
-            D-{program.daysLeft}
+            {program.daysLeft >= 0 && program.daysLeft < 900
+              ? `D-${program.daysLeft}`
+              : program.deadline}
           </span>
         </div>
       </div>

@@ -7,7 +7,9 @@ export type ApiErrorCode =
   | "RATE_LIMITED"
   | "INTERNAL_ERROR"
   | "AI_TIMEOUT"
-  | "AI_SCHEMA_INVALID";
+  | "AI_SCHEMA_INVALID"
+  | "CONFIG_ERROR"
+  | "UPSTREAM_ERROR";
 
 export const apiErrorStatus: Record<ApiErrorCode, number> = {
   UNAUTHORIZED: 401,
@@ -19,6 +21,8 @@ export const apiErrorStatus: Record<ApiErrorCode, number> = {
   INTERNAL_ERROR: 500,
   AI_TIMEOUT: 504,
   AI_SCHEMA_INVALID: 422,
+  CONFIG_ERROR: 503,
+  UPSTREAM_ERROR: 502,
 };
 
 export class ApiError extends Error {

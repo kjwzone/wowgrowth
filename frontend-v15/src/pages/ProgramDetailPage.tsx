@@ -101,13 +101,25 @@ export default function ProgramDetailPage() {
             <FileText className="h-4 w-4" />
             사업계획서 작성
           </Link>
-          <Link
-            to="/matching-results"
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-secondary py-3 text-sm font-medium text-secondary hover:bg-secondary-fixed/20"
-          >
-            <Sparkles className="h-4 w-4" />
-            매칭 결과 보기
-          </Link>
+          {program.source === "bizinfo" && program.externalUrl ? (
+            <a
+              href={program.externalUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-secondary py-3 text-sm font-medium text-secondary hover:bg-secondary-fixed/20"
+            >
+              <Sparkles className="h-4 w-4" />
+              기업마당 원문 보기
+            </a>
+          ) : (
+            <Link
+              to="/matching-results"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-secondary py-3 text-sm font-medium text-secondary hover:bg-secondary-fixed/20"
+            >
+              <Sparkles className="h-4 w-4" />
+              매칭 결과 보기
+            </Link>
+          )}
         </div>
       </div>
     </div>

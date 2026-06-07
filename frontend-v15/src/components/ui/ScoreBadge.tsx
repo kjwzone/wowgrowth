@@ -1,6 +1,20 @@
 import { cn } from "@/lib/utils";
 
-export const ScoreBadge = ({ score, size = "md" }: { score: number; size?: "sm" | "md" | "lg" }) => {
+export const ScoreBadge = ({
+  score,
+  size = "md",
+}: {
+  score: number | null;
+  size?: "sm" | "md" | "lg";
+}) => {
+  if (score === null) {
+    return (
+      <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-500">
+        AI 매칭 예정
+      </span>
+    );
+  }
+
   const level = score >= 85 ? "high" : score >= 70 ? "medium" : "low";
   const colors = {
     high: "bg-emerald-100 text-emerald-800 border-emerald-200",

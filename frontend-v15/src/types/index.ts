@@ -4,7 +4,10 @@ export type ProgramCategory =
   | "수출"
   | "스마트공장"
   | "인력"
-  | "금융";
+  | "금융"
+  | "기타";
+
+export type ProgramDataSource = "bizinfo" | "mock";
 
 export type ProgramStatus = "모집중" | "마감임박" | "마감";
 
@@ -17,7 +20,7 @@ export type SupportProgram = {
   supportAmount: string;
   deadline: string;
   daysLeft: number;
-  matchScore: number;
+  matchScore: number | null;
   status: ProgramStatus;
   summary: string;
   target: string[];
@@ -26,6 +29,8 @@ export type SupportProgram = {
   documents: string[];
   aiFitAnalysis: string;
   strategyTip: string;
+  source?: ProgramDataSource;
+  externalUrl?: string;
 };
 
 export type CompanyProfile = {

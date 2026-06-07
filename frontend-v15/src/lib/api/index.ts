@@ -8,6 +8,10 @@ import {
 import { matchingResults } from "@/data/matching";
 import { getProgramById, programs } from "@/data/programs";
 import {
+  fetchBizinfoProgramById,
+  fetchBizinfoProgramsFromApi,
+} from "@/lib/bizinfo-client";
+import {
   completePipeline,
   createEmptyDraft,
   generateSectionContent,
@@ -33,13 +37,49 @@ export type { SubmissionCheckResult };
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 let draftCache: BusinessPlanDraft = businessPlanDraft;
+let bizinfoProgramCache: SupportProgram[] = [];
+
+export type ProgramListResult = {
+  items: SupportProgram[];
+  source: "bizinfo" | "mock";
+  message?: string;
+};
 
 export const programApi = {
-  list: async (): Promise<SupportProgram[]> => {
+  list: async (params?: {
+    q?: string;
+    category?: string;
+  }): Promise<ProgramListResult> => {
+    const remote = await fetchBizinfoProgramsFromApi({
+      pageSize: 30,
+      q: params?.q,
+      category: params?.category,
+    });
+
+    if (remote && remote.items.length > 0) {
+      bizinfoProgramCache = remote.items;
+      return { items: remote.items, source: "bizinfo" };
+    }
+
     await delay(200);
-    return programs;
+    return {
+      items: programs,
+      source: "mock",
+      message:
+        "기업마당 API를 불러오지 못했습니다. 데모 데이터를 표시합니다. (BIZINFO_API_KEY·VITE_WOWGROWTH_API_URL 확인)",
+    };
   },
+
   getById: async (id: string): Promise<SupportProgram | undefined> => {
+    const cached =
+      bizinfoProgramCache.find((p) => p.id === id) ?? getProgramById(id);
+    if (cached) return cached;
+
+    if (id.startsWith("bizinfo-")) {
+      const remote = await fetchBizinfoProgramById(id);
+      return remote ?? undefined;
+    }
+
     await delay(150);
     return getProgramById(id);
   },
