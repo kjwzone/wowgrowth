@@ -1,0 +1,66 @@
+{
+  "_설명": "기업경영진단서 입력 템플릿. 모르는 값은 null. 금액 단위=천원. 연도 키는 'YYYY' 문자열. 최근 3개년 권장.",
+  "company": {
+    "name": "㈜OOOO",
+    "type": "일반법인",
+    "ceo": "대표자명",
+    "biz_no": "000-00-00000",
+    "establish_date": "2018-08-16",
+    "phone": "",
+    "address_hq": "",
+    "is_owned": true,
+    "employees": null,
+    "export": "무",
+    "business_type": "제조업",
+    "item": "",
+    "industry_code": "C27216",
+    "industry_name": "산업처리공정 제어장비 제조업",
+    "main_product": ""
+  },
+  "certifications": {
+    "벤처": false, "이노비즈": false, "메인비즈": false, "지식재산경영인증": false,
+    "연구소": false, "연구개발전담부서": false,
+    "ISO9001": false, "ISO14001": false, "ISO45001": false,
+    "특허등록건수": 0, "특허등록_3년내": 0, "특허출원": 0, "상표권": 0
+  },
+  "shareholders": [
+    {"name": "주주명", "shares": 40000, "ratio": 100.0, "capital": 200000, "관계": "대표"}
+  ],
+  "total_shares": 40000,
+  "par_value_per_share": 5000,
+  "real_estate_ratio": null,
+  "collateral": {
+    "_설명": "담보대출한도 산출용 감가전 장부가(천원). 없으면 null → 한도 N/A",
+    "land_building_book": null,
+    "machinery_book": null
+  },
+  "financials": {
+    "2021": {
+      "current_assets": null, "non_current_assets": null, "total_assets": null,
+      "current_liabilities": null, "non_current_liabilities": null, "total_liabilities": null,
+      "capital_stock": null, "retained_earnings": null, "total_equity": null,
+      "accounts_receivable": null, "inventory": null, "accounts_payable": null,
+      "revenue": null, "gross_profit": null, "sga": null, "operating_income": null,
+      "non_operating_income": null, "non_operating_expense": null,
+      "pretax_income": null, "corporate_tax": null, "net_income": null,
+      "interest_expense": null, "depreciation": null, "amortization": null,
+      "short_term_debt": null, "long_term_debt": null
+    },
+    "2022": {},
+    "2023": {}
+  },
+  "industry_avg": {
+    "_설명": "한국은행 기업경영분석/KoDATA 동종 평균(%). 없으면 이 객체를 비우거나 삭제 → 평가·진단등급 N/A",
+    "2023": {
+      "부채비율": null, "자기자본비율": null, "차입금의존도": null, "유동비율": null,
+      "당좌비율": null, "고정장기적합률": null, "매출액영업이익율": null,
+      "영업이익이자보상배수": null, "총자본순이익률": null, "자기자본순이익율(ROE)": null,
+      "금융비용/매출액비율": null, "매출액순이익율": null, "총자본회전율": null,
+      "매출채권회전기간": null, "매입채무회전기간": null, "재고자산회전기간": null,
+      "운전자금1회전기간": null, "매출액증가율": null, "총자산증가율": null,
+      "자기자본증가율": null
+    }
+  },
+  "credit_rating": null,
+  "cashflow_grade": null
+}

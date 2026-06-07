@@ -1,0 +1,64 @@
+{
+  "company": {
+    "name": "㈜OOOO", "type": "일반법인", "ceo": "배OO", "biz_no": "317-81-00000",
+    "establish_date": "2018-08-16", "phone": "031-494-0000", "address_hq": "충남 천안시 단원구 별망로",
+    "is_owned": true, "employees": 12, "export": "무", "business_type": "제조업",
+    "item": "산업처리공정 제어장비 제조업", "industry_code": "C27216",
+    "industry_name": "산업처리공정 제어장비 제조업", "main_product": "산업처리공정 제어장비"
+  },
+  "shareholders": [
+    {"name": "배OO", "shares": 40000, "ratio": 100.0, "capital": 200000, "관계": "대표/경영실권자"}
+  ],
+  "total_shares": 40000,
+  "par_value_per_share": 5000,
+  "real_estate_ratio": 53.3,
+  "collateral": {"land_building_book": 2000000, "machinery_book": 510000},
+  "financials": {
+    "2021": {
+      "current_assets": 1416432, "non_current_assets": 2350071, "total_assets": 3766503,
+      "current_liabilities": 334925, "non_current_liabilities": 2750000, "total_liabilities": 3084925,
+      "capital_stock": 100000, "retained_earnings": 581578, "total_equity": 681578,
+      "accounts_receivable": 169310, "inventory": 1052972, "accounts_payable": 90000,
+      "revenue": 1534502, "gross_profit": 557666, "sga": 333499, "operating_income": 224167,
+      "non_operating_income": 31627, "non_operating_expense": 42636,
+      "pretax_income": 213158, "corporate_tax": 2317, "net_income": 210841,
+      "interest_expense": 42636, "depreciation": 37000, "amortization": 0,
+      "short_term_debt": 0, "long_term_debt": 2750000
+    },
+    "2022": {
+      "current_assets": 1498241, "non_current_assets": 2206369, "total_assets": 3704610,
+      "current_liabilities": 92579, "non_current_liabilities": 2850000, "total_liabilities": 2942579,
+      "capital_stock": 100000, "retained_earnings": 662031, "total_equity": 762031,
+      "accounts_receivable": 169310, "inventory": 1201613, "accounts_payable": 90000,
+      "revenue": 1848002, "gross_profit": 448364, "sga": 371621, "operating_income": 76743,
+      "non_operating_income": 70382, "non_operating_expense": 78232,
+      "pretax_income": 68893, "corporate_tax": -2, "net_income": 68893,
+      "interest_expense": 78090, "depreciation": 42338, "amortization": 0,
+      "short_term_debt": 0, "long_term_debt": 2850000
+    },
+    "2023": {
+      "current_assets": 1850403, "non_current_assets": 2260290, "total_assets": 4110693,
+      "current_liabilities": 364676, "non_current_liabilities": 2800080, "total_liabilities": 3164756,
+      "capital_stock": 200000, "retained_earnings": 745937, "total_equity": 945937,
+      "accounts_receivable": 169310, "inventory": 1171046, "accounts_payable": 133000,
+      "revenue": 1945385, "gross_profit": 538378, "sga": 379038, "operating_income": 159340,
+      "non_operating_income": 11324, "non_operating_expense": 86059,
+      "pretax_income": 84605, "corporate_tax": 699, "net_income": 83906,
+      "interest_expense": 84802, "depreciation": 3347, "amortization": 0,
+      "short_term_debt": 0, "long_term_debt": 2800080
+    }
+  },
+  "industry_avg": {
+    "2023": {
+      "부채비율": 80.72, "자기자본비율": 55.33, "차입금의존도": 23.54, "유동비율": 167.73,
+      "당좌비율": 128.46, "고정장기적합률": 69.49, "매출액영업이익율": 9.15,
+      "영업이익이자보상배수": 6.46, "총자본순이익률": 4.44, "자기자본순이익율(ROE)": 8.02,
+      "금융비용/매출액비율": 1.42, "매출액순이익율": 6.17, "총자본회전율": 0.72,
+      "매출채권회전기간": 70.46, "매입채무회전기간": 25.81, "재고자산회전기간": 59.84,
+      "운전자금1회전기간": 104.49, "매출액증가율": 14.21, "총자산증가율": 11.76,
+      "자기자본증가율": 11.45
+    }
+  },
+  "credit_rating": {"2023": "BB-"},
+  "cashflow_grade": {"2023": "CR4"}
+}
