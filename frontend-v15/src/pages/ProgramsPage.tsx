@@ -16,14 +16,17 @@ export default function ProgramsPage() {
 
   const loadPrograms = async (nextQuery = query, nextCategory = category) => {
     setLoading(true);
-    const result = await programApi.list({
-      q: nextQuery.trim() || undefined,
-      category: nextCategory,
-    });
-    setPrograms(result.items);
-    setDataSource(result.source);
-    setNotice(result.message ?? null);
-    setLoading(false);
+    try {
+      const result = await programApi.list({
+        q: nextQuery.trim() || undefined,
+        category: nextCategory,
+      });
+      setPrograms(result.items);
+      setDataSource(result.source);
+      setNotice(result.message ?? null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

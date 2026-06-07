@@ -48,12 +48,20 @@ src/
 
 ## Vercel 배포
 
-기존 [wowgrowth.vercel.app](https://wowgrowth.vercel.app)은 **Next.js 백엔드**입니다.  
-UI 데모(`frontend-v15`)는 **별도 Vercel 프로젝트**로 배포합니다.
+| URL | 용도 |
+|-----|------|
+| [wowgrowth.vercel.app](https://wowgrowth.vercel.app) | Next.js 백엔드 (메인) |
+| [wowgrowth-kd4u.vercel.app](https://wowgrowth-kd4u.vercel.app) | **frontend-v15 UI 데모** (이 README 대상) |
+
+UI 데모는 **별도 Vercel 프로젝트**(`wowgrowth-kd4u`)로 배포합니다.  
+기업마당 공고는 **같은 도메인**의 `/api/bizinfo` Serverless Function을 호출합니다.  
+`wowgrowth.vercel.app`으로 cross-origin 호출하지 **않습니다** (401/CORS).
 
 1. [vercel.com/new](https://vercel.com/new) → `kjwzone/wowgrowth` Import
 2. **Root Directory**: `frontend-v15`
-3. Framework: Vite · Deploy (환경 변수 불필요)
+3. Framework: Vite
+4. **Environment Variables**: `BIZINFO_API_KEY` (기업마당 인증키)
+5. `VITE_WOWGROWTH_API_URL`은 **설정하지 마세요** (잘못 설정 시 공고 로딩 실패)
 
 GitHub Actions 자동 배포: `.github/workflows/deploy-frontend-v15.yml`  
 (저장소 Secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` — 등록 완료)

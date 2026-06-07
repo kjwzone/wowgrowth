@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { mapBizinfoToSupportProgram } from "@/lib/bizinfo-client";
+import {
+  buildBizinfoApiUrl,
+  mapBizinfoToSupportProgram,
+} from "@/lib/bizinfo-client";
 
 describe("bizinfo-client", () => {
+  it("builds same-origin API URL (not cross-origin Next.js)", () => {
+    const url = buildBizinfoApiUrl({ pageSize: 10, category: "창업" });
+    expect(url.startsWith("/api/bizinfo?")).toBe(true);
+    expect(url).not.toContain("wowgrowth.vercel.app");
+    expect(url).toContain("category=%EC%B0%BD%EC%97%85");
+  });
+
   it("maps API program to SupportProgram", () => {
     const program = mapBizinfoToSupportProgram({
       id: "bizinfo-PBLN_1",

@@ -50,15 +50,19 @@ export const programApi = {
     q?: string;
     category?: string;
   }): Promise<ProgramListResult> => {
-    const remote = await fetchBizinfoProgramsFromApi({
-      pageSize: 30,
-      q: params?.q,
-      category: params?.category,
-    });
+    try {
+      const remote = await fetchBizinfoProgramsFromApi({
+        pageSize: 30,
+        q: params?.q,
+        category: params?.category,
+      });
 
-    if (remote && remote.items.length > 0) {
-      bizinfoProgramCache = remote.items;
-      return { items: remote.items, source: "bizinfo" };
+      if (remote && remote.items.length > 0) {
+        bizinfoProgramCache = remote.items;
+        return { items: remote.items, source: "bizinfo" };
+      }
+    } catch {
+      // fall through to mock data
     }
 
     await delay(200);
@@ -66,7 +70,7 @@ export const programApi = {
       items: programs,
       source: "mock",
       message:
-        "기업마당 API를 불러오지 못했습니다. 데모 데이터를 표시합니다. (BIZINFO_API_KEY·VITE_WOWGROWTH_API_URL 확인)",
+        "기업마당 API를 불러오지 못했습니다. 데모 데이터를 표시합니다. (Vercel BIZINFO_API_KEY 확인)",
     };
   },
 

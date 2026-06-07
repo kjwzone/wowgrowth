@@ -17,6 +17,8 @@ type BizinfoApiProgram = {
   source: "bizinfo";
 };
 
+const FETCH_TIMEOUT_MS = 12_000;
+
 const toProgramCategory = (category: string): ProgramCategory => {
   const allowed: ProgramCategory[] = [
     "창업",
@@ -54,8 +56,33 @@ export const mapBizinfoToSupportProgram = (item: BizinfoApiProgram): SupportProg
   externalUrl: item.externalUrl,
 });
 
-export const getProgramsApiBaseUrl = (): string =>
-  import.meta.env.VITE_WOWGROWTH_API_URL?.trim() || "https://wowgrowth.vercel.app";
+/** frontend-v15 배포 도메인(kd4u)의 same-origin Vercel Function만 사용 */
+export const buildBizinfoApiUrl = (params: {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  category?: string;
+}): string => {
+  const searchParams = new URLSearchParams();
+  searchParams.set("pageSize", String(params.pageSize ?? 30));
+  if (params.page) searchParams.set("page", String(params.page));
+  if (params.q) searchParams.set("q", params.q);
+  if (params.category && params.category !== "전체") {
+    searchParams.set("category", params.category);
+  }
+
+  return `/api/bizinfo?${searchParams.toString()}`;
+};
+
+const fetchWithTimeout = async (url: string): Promise<Response> => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+};
 
 type ApiListResponse = {
   success: boolean;
@@ -73,45 +100,33 @@ export const fetchBizinfoProgramsFromApi = async (params: {
   q?: string;
   category?: string;
 }): Promise<{ items: SupportProgram[]; total: number } | null> => {
-  const searchParams = new URLSearchParams();
-  searchParams.set("pageSize", String(params.pageSize ?? 30));
-  if (params.page) searchParams.set("page", String(params.page));
-  if (params.q) searchParams.set("q", params.q);
-  if (params.category && params.category !== "전체") {
-    searchParams.set("category", params.category);
-  }
+  try {
+    const response = await fetchWithTimeout(buildBizinfoApiUrl(params));
+    if (!response.ok) {
+      return null;
+    }
 
-  const response = await fetch(
-    `${getProgramsApiBaseUrl()}/api/programs/bizinfo?${searchParams.toString()}`,
-  );
+    const payload = (await response.json()) as ApiListResponse;
+    if (!payload.success || !payload.data?.items?.length) {
+      return null;
+    }
 
-  if (!response.ok) {
+    return {
+      items: payload.data.items.map(mapBizinfoToSupportProgram),
+      total: payload.data.total,
+    };
+  } catch {
     return null;
   }
-
-  const payload = (await response.json()) as ApiListResponse;
-  if (!payload.success || !payload.data?.items) {
-    return null;
-  }
-
-  return {
-    items: payload.data.items.map(mapBizinfoToSupportProgram),
-    total: payload.data.total,
-  };
 };
 
 export const fetchBizinfoProgramById = async (
   id: string,
 ): Promise<SupportProgram | null> => {
-  const encodedId = encodeURIComponent(id.replace(/^bizinfo-/, ""));
-  const response = await fetch(
-    `${getProgramsApiBaseUrl()}/api/programs/bizinfo/${encodedId}`,
-  );
-  if (!response.ok) return null;
-  const payload = (await response.json()) as {
-    success: boolean;
-    data?: BizinfoApiProgram;
-  };
-  if (!payload.success || !payload.data) return null;
-  return mapBizinfoToSupportProgram(payload.data);
+  try {
+    const list = await fetchBizinfoProgramsFromApi({ pageSize: 50 });
+    return list?.items.find((item) => item.id === id) ?? null;
+  } catch {
+    return null;
+  }
 };

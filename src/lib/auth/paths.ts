@@ -1,6 +1,6 @@
 export const publicPaths = ["/", "/login", "/signup"] as const;
 
-export const publicPrefixes = ["/error"] as const;
+export const publicPrefixes = ["/error", "/api/programs/bizinfo"] as const;
 
 export const protectedPrefixes = [
   "/dashboard",
