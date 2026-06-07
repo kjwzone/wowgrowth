@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BarChart3, Lock, ShieldCheck } from "lucide-react";
 import { authApi } from "@/lib/api";
+import { persistSession } from "@/lib/use-session";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ export default function LoginPage() {
         mode === "login"
           ? await authApi.login(email, password)
           : await authApi.signup(email, password, name);
-      localStorage.setItem("wowgrowth-session", JSON.stringify(session));
+      persistSession(session);
       navigate(session.role === "admin" ? "/admin/review" : "/dashboard");
     } catch {
       setError("로그인에 실패했습니다. 다시 시도해 주세요.");
