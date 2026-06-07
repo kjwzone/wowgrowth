@@ -37,7 +37,7 @@ export const BusinessPlanPreview = ({
               href={`#preview-${section.id}`}
               className="inline-block rounded-full bg-surface-container px-3 py-1 text-xs text-on-surface-variant hover:bg-secondary/10 hover:text-secondary"
             >
-              {section.order}. {section.title.split("_")[0]}
+              {section.displayLabel}
             </a>
           </li>
         ))}
@@ -58,7 +58,7 @@ export const BusinessPlanPreview = ({
               className="text-left text-base font-semibold text-primary hover:text-secondary"
               title="섹션 편집으로 이동"
             >
-              {section.order}. {section.title}
+              {section.displayLabel}
             </button>
             <span className="text-sm font-medium text-secondary">{section.completeness}%</span>
           </div>
