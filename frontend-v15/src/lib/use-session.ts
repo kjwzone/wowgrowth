@@ -1,17 +1,54 @@
 import { useCallback, useSyncExternalStore } from "react";
-import { clearSession, getSession, saveSession } from "@/lib/auth-session";
+import { clearSession, saveSession, SESSION_STORAGE_KEY } from "@/lib/auth-session";
 import type { UserSession } from "@/types";
 
+let cachedRaw: string | null | undefined;
+let cachedSession: UserSession | null = null;
+
+/** useSyncExternalStore는 동일 스냅샷 참조가 필요 — JSON.parse 결과를 캐시 */
+export const readSessionSnapshot = (): UserSession | null => {
+  if (typeof localStorage === "undefined") return null;
+
+  const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+  if (raw === cachedRaw) {
+    return cachedSession;
+  }
+
+  cachedRaw = raw;
+  if (!raw) {
+    cachedSession = null;
+    return null;
+  }
+
+  try {
+    cachedSession = JSON.parse(raw) as UserSession;
+  } catch {
+    cachedSession = null;
+  }
+
+  return cachedSession;
+};
+
+export const invalidateSessionSnapshot = (): void => {
+  cachedRaw = undefined;
+};
+
 const subscribe = (onStoreChange: () => void): (() => void) => {
-  window.addEventListener("storage", onStoreChange);
-  window.addEventListener("wowgrowth-session-change", onStoreChange);
+  const onChange = () => {
+    invalidateSessionSnapshot();
+    onStoreChange();
+  };
+
+  window.addEventListener("storage", onChange);
+  window.addEventListener("wowgrowth-session-change", onChange);
   return () => {
-    window.removeEventListener("storage", onStoreChange);
-    window.removeEventListener("wowgrowth-session-change", onStoreChange);
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener("wowgrowth-session-change", onChange);
   };
 };
 
 const notifySessionChange = (): void => {
+  invalidateSessionSnapshot();
   window.dispatchEvent(new Event("wowgrowth-session-change"));
 };
 
@@ -28,7 +65,7 @@ export const removeSession = (): void => {
 export const useSession = () => {
   const session = useSyncExternalStore(
     subscribe,
-    () => getSession(),
+    readSessionSnapshot,
     () => null,
   );
 
