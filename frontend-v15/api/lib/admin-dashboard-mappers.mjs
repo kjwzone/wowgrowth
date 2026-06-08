@@ -4,6 +4,13 @@ const readNestedName = (relation, field) => {
   return typeof value === "string" && value.trim() ? value.trim() : "—";
 };
 
+const readApplicantName = (companyRelation) => {
+  if (!companyRelation || typeof companyRelation !== "object") return "—";
+  const profile = companyRelation.profiles;
+  if (!profile || typeof profile !== "object") return "—";
+  return profile.full_name?.trim() || profile.email?.trim() || "—";
+};
+
 export const extractDiagnosisScore = (reportJson) => {
   if (!reportJson || typeof reportJson !== "object") return null;
   const candidates = [
@@ -60,6 +67,7 @@ export const mapBusinessPlanRows = (rows = []) =>
     id: row.id,
     companyId: row.company_id,
     companyName: readNestedName(row.companies, "company_name"),
+    applicantName: readApplicantName(row.companies),
     programId: row.program_id,
     programTitle: readNestedName(row.support_programs, "title"),
     title: row.title?.trim() || readNestedName(row.support_programs, "title"),

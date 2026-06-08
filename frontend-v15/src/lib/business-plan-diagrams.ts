@@ -66,7 +66,7 @@ export const buildSystemDiagramSvg = ({ companyName, product }: DiagramContext):
   <text x="360" y="28" text-anchor="middle" font-size="14" font-weight="700" fill="${INK}" font-family="'Noto Sans KR', sans-serif">시스템 구성도</text>
   ${box(40, 80, 120, 44, "웹 UI")}
   ${box(40, 160, 120, 44, "사업계획서")}
-  ${box(40, 240, 120, 44, "관리자 검수")}
+  ${box(40, 240, 120, 44, "제출·다운로드")}
   ${box(220, 140, 140, 56, "API Gateway", "#f0f4ff", BLUE)}
   ${box(420, 60, 130, 44, "공고 분석")}
   ${box(420, 130, 130, 44, "계획서 생성")}

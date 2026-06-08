@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { FileText, Radio, Trophy } from "lucide-react";
+import { Radio, Trophy } from "lucide-react";
 import { PageHeader, SectionCard } from "@/components/ui/PageHeader";
 import { ScoreBadge } from "@/components/ui/ScoreBadge";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -45,15 +45,6 @@ export default function MatchingResultsPage() {
       <PageHeader
         title="AI 매칭 결과"
         description="기업 프로필 × 실시간 공고(기업마당) 기반 추천 및 개선 제안"
-        action={
-          <Link
-            to={top ? `/business-plan?programId=${encodeURIComponent(top.programId)}` : "/business-plan"}
-            className="inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-on-secondary"
-          >
-            <FileText className="h-4 w-4" />
-            사업계획서 작성
-          </Link>
-        }
       />
 
       {meta.source === "bizinfo" ? (
@@ -160,7 +151,7 @@ export default function MatchingResultsPage() {
                   to={`/programs/${result.programId}`}
                   className="mt-4 inline-block text-sm font-medium text-secondary hover:underline"
                 >
-                  공고 상세 보기 →
+                  {"공고 상세 보기 및 사업계획서 자동 작성 -->"}
                 </Link>
               </SectionCard>
             ))}

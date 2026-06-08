@@ -23,7 +23,7 @@ export default function LoginPage() {
           ? await authApi.login(email, password)
           : await authApi.signup(email, password, name);
       persistSession(session);
-      navigate(session.role === "admin" ? "/admin/review" : "/dashboard");
+      navigate(session.role === "admin" ? "/admin/dashboard" : "/dashboard");
     } catch {
       setError("로그인에 실패했습니다. 다시 시도해 주세요.");
     } finally {

@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import {
   Building2,
-  ClipboardList,
   FileText,
   LayoutDashboard,
   Sparkles,
@@ -169,7 +167,7 @@ export default function AdminDashboardPage() {
             },
             {
               key: "status",
-              header: "검수",
+              header: "상태",
               render: (row: (typeof details.matchingResults)[number]) => (
                 <AdminStatusBadge value={row.status} />
               ),
@@ -198,21 +196,33 @@ export default function AdminDashboardPage() {
               ),
             },
             {
+              key: "applicant",
+              header: "신청자",
+              render: (row: (typeof details.businessPlans)[number]) => row.applicantName,
+            },
+            {
               key: "program",
-              header: "대상 공고",
+              header: "공고",
               render: (row: (typeof details.businessPlans)[number]) => (
                 <p className="text-sm text-on-surface-variant">{row.programTitle}</p>
               ),
             },
             {
               key: "title",
-              header: "사업계획서",
+              header: "AI 문서",
               render: (row: (typeof details.businessPlans)[number]) => (
                 <div>
                   <p className="font-medium text-primary">{row.title}</p>
                   <p className="text-xs text-on-surface-variant">섹션 {row.sectionCount}개</p>
                 </div>
               ),
+            },
+            {
+              key: "created",
+              header: "생성일",
+              className: "whitespace-nowrap",
+              render: (row: (typeof details.businessPlans)[number]) =>
+                formatAdminDate(row.createdAt),
             },
             {
               key: "status",
@@ -259,15 +269,6 @@ export default function AdminDashboardPage() {
       <PageHeader
         title="관리자 대시보드"
         description="등록 기업·진단 보고서·AI 매칭·사업계획서 통합 조회"
-        action={
-          <Link
-            to="/admin/review"
-            className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/60 px-4 py-2 text-sm font-medium text-primary hover:bg-surface-container"
-          >
-            <ClipboardList className="h-4 w-4" />
-            AI 검수
-          </Link>
-        }
       />
 
       <div className="mb-6 flex flex-wrap gap-2">
@@ -335,10 +336,9 @@ export default function AdminDashboardPage() {
                 onClick={() => setActiveTab("matching")}
               />
               <StatCard
-                label="검수 대기"
-                value={summary.pendingReviews}
-                href="/admin/review"
-                tone={summary.pendingReviews > 0 ? "warn" : "default"}
+                label="사업계획서"
+                value={summary.businessPlans}
+                onClick={() => setActiveTab("plans")}
               />
             </div>
 
@@ -354,39 +354,34 @@ export default function AdminDashboardPage() {
                 value={summary.diagnosisReports}
                 onClick={() => setActiveTab("diagnosis")}
               />
-              <StatCard
-                label="사업계획서"
-                value={summary.businessPlans}
-                onClick={() => setActiveTab("plans")}
-              />
               <StatCard label="AI 작업 성공" value={summary.aiJobs.succeeded} />
+              <StatCard
+                label="AI 작업 전체"
+                value={summary.aiJobs.total}
+                hint={`queued ${summary.aiJobs.queued} · running ${summary.aiJobs.running}`}
+              />
             </div>
           </SectionCard>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <SectionCard title="검수 대기">
-              {summary.pendingReviewItems.length === 0 ? (
-                <p className="text-sm text-on-surface-variant">검수 대기 항목이 없습니다.</p>
-              ) : (
-                <ul className="divide-y divide-outline-variant/20 text-sm">
-                  {summary.pendingReviewItems.map((item) => (
-                    <li key={item.id} className="flex items-center justify-between gap-3 py-3">
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-primary">{item.title}</p>
-                        <p className="text-xs text-on-surface-variant">
-                          {formatAdminDate(item.created_at)}
-                        </p>
-                      </div>
-                      <Link
-                        to="/admin/review"
-                        className="shrink-0 text-sm font-medium text-secondary underline"
-                      >
-                        검수
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
+            <SectionCard
+              title="사용자별 AI 문서 현황"
+              description="최근 생성·수정된 사업계획서"
+            >
+              <AdminDataTable
+                columns={planColumns.slice(0, 5)}
+                rows={details.businessPlans.slice(0, 5)}
+                emptyMessage="생성된 AI 문서가 없습니다."
+              />
+              {details.businessPlans.length > 5 ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("plans")}
+                  className="mt-4 text-sm font-medium text-secondary hover:underline"
+                >
+                  전체 {details.businessPlans.length}건 보기 →
+                </button>
+              ) : null}
             </SectionCard>
 
             <SectionCard title="최근 실패한 AI 작업">
@@ -456,8 +451,8 @@ export default function AdminDashboardPage() {
 
       {activeTab === "plans" ? (
         <SectionCard
-          title="사업계획서 현황"
-          description={`총 ${details.businessPlans.length}건 · 최종 수정순`}
+          title="사용자별 AI 문서·신청 현황"
+          description={`총 ${details.businessPlans.length}건 · 사업계획서 생성·수정 현황`}
         >
           <AdminDataTable
             columns={planColumns}

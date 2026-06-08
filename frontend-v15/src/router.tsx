@@ -10,7 +10,6 @@ import CompanyDiagnosisReportPage from "@/pages/CompanyDiagnosisReportPage";
 import MatchingResultsPage from "@/pages/MatchingResultsPage";
 import BusinessPlanPage from "@/pages/BusinessPlanPage";
 import AdminDashboardPage from "@/pages/AdminDashboardPage";
-import AdminReviewPage from "@/pages/AdminReviewPage";
 
 export const router = createBrowserRouter([
   { path: "/", element: <LandingPage /> },
@@ -26,7 +25,7 @@ export const router = createBrowserRouter([
       { path: "/matching-results", element: <MatchingResultsPage /> },
       { path: "/business-plan", element: <BusinessPlanPage /> },
       { path: "/admin/dashboard", element: <AdminDashboardPage /> },
-      { path: "/admin/review", element: <AdminReviewPage /> },
+      { path: "/admin/review", element: <Navigate to="/admin/dashboard" replace /> },
     ],
   },
   { path: "*", element: <Navigate to="/" replace /> },

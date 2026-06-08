@@ -93,7 +93,10 @@ describe("admin-dashboard-mappers", () => {
         plan_json: { sections: [{}, {}] },
         created_at: "2026-06-01T00:00:00Z",
         updated_at: "2026-06-03T00:00:00Z",
-        companies: { company_name: "와우그로스" },
+        companies: {
+          company_name: "와우그로스",
+          profiles: { full_name: "김종우", email: "user@wowgrowth.dev" },
+        },
         support_programs: { title: "창업패키지", agency: "중기부" },
       },
     ]);
@@ -101,6 +104,7 @@ describe("admin-dashboard-mappers", () => {
     expect(plans[0]).toMatchObject({
       sectionCount: 2,
       title: "2026 사업계획서",
+      applicantName: "김종우",
     });
   });
 });

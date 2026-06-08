@@ -25,7 +25,7 @@ npm test
 | `/company-profile` | 기업정보 |
 | `/matching-results` | AI 매칭 |
 | `/business-plan` | 사업계획서 |
-| `/admin/review` | 관리자 검수 |
+| `/admin/dashboard` | 관리자 대시보드 (기업·진단·매칭·사업계획서 통합 조회) |
 
 관리자 데모: `admin@wowgrowth.com` 으로 로그인
 

@@ -104,19 +104,6 @@ export type BusinessPlanDraft = {
   submissionChecklist?: { item: string; passed: boolean; message: string }[];
 };
 
-export type ReviewStatus = "대기" | "승인" | "반려" | "보완요청";
-
-export type AdminReviewItem = {
-  id: string;
-  companyName: string;
-  applicant: string;
-  programTitle: string;
-  submittedAt: string;
-  aiDocumentTitle: string;
-  status: ReviewStatus;
-  adminComment: string;
-};
-
 export type DashboardStats = {
   diagnosisStatus: string;
   diagnosisScore: number;

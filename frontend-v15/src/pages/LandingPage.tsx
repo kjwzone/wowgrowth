@@ -14,7 +14,7 @@ const features = [
   { icon: Target, title: "AI 기업진단", desc: "기업 프로필 기반 성장·지원 준비도 분석" },
   { icon: Sparkles, title: "맞춤 공고 매칭", desc: "수천 건 공고 중 적합도 Top 추천" },
   { icon: FileText, title: "사업계획서 자동작성", desc: "공고별 AI 초안 생성·항목별 편집" },
-  { icon: Shield, title: "관리자 검수", desc: "제출 전 AI 문서 품질 검토 워크플로" },
+  { icon: Shield, title: "운영 대시보드", desc: "등록 기업·AI 문서·매칭 결과 통합 모니터링" },
 ];
 
 const steps = [

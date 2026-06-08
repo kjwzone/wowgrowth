@@ -26,6 +26,16 @@ const extractJson = (text) => {
   return JSON.parse(body.slice(start, end + 1));
 };
 
+const GEMINI_CALL_TIMEOUT_MS = 50_000;
+
+const withTimeout = (promise, ms, label) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(`${label} timeout (${ms}ms)`)), ms);
+    }),
+  ]);
+
 export const generateJsonWithGemini = async ({
   prompt,
   maxOutputTokens = 8192,
@@ -52,7 +62,11 @@ export const generateJsonWithGemini = async ({
           responseMimeType: "application/json",
         },
       });
-      const result = await model.generateContent(prompt);
+      const result = await withTimeout(
+        model.generateContent(prompt),
+        GEMINI_CALL_TIMEOUT_MS,
+        `Gemini ${modelName}`,
+      );
       const parsed = extractJson(result.response.text());
       return { data: parsed, model: modelName };
     } catch (error) {

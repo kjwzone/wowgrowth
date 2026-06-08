@@ -5,13 +5,22 @@ type ApiEnvelope<T> =
   | ({ ok: true } & T)
   | { ok: false; message: string; fallback?: string };
 
+const AI_REQUEST_TIMEOUT_MS = 45_000;
+
 const postJson = async <T>(path: string, body: unknown): Promise<ApiEnvelope<T>> => {
-  const response = await fetch(`/api/business-plan/${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return (await response.json()) as ApiEnvelope<T>;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(`/api/business-plan/${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    return (await response.json()) as ApiEnvelope<T>;
+  } finally {
+    clearTimeout(timer);
+  }
 };
 
 export type GeneratePlanResponse = {
@@ -86,8 +95,16 @@ export const businessPlanAiClient = {
   },
 };
 
-export const isAiFallbackError = (error: unknown): boolean =>
-  error instanceof Error &&
-  (error.message.includes("GEMINI_API_KEY") ||
-    error.message.includes("503") ||
-    error.message.includes("Gemini"));
+export const isAiFallbackError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("gemini_api_key") ||
+    message.includes("503") ||
+    message.includes("gemini") ||
+    message.includes("abort") ||
+    message.includes("timeout") ||
+    message.includes("network") ||
+    message.includes("failed to fetch")
+  );
+};

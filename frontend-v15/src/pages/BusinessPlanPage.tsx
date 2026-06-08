@@ -71,10 +71,27 @@ export default function BusinessPlanPage() {
     if (!draft || submitting) return;
     setSubmitting(true);
     setSubmissionResult(null);
-    const { draft: updated, result } = await businessPlanApi.prepareForSubmission();
-    setDraft(updated);
-    setSubmissionResult(result);
-    setSubmitting(false);
+    try {
+      const { draft: updated, result } = await businessPlanApi.prepareForSubmission();
+      setDraft(updated);
+      setSubmissionResult(result);
+    } catch (error: unknown) {
+      setSubmissionResult({
+        ok: false,
+        errors: [
+          error instanceof Error ? error.message : "제출 검증 중 오류가 발생했습니다.",
+        ],
+        checklist: [
+          {
+            item: "제출 검증",
+            pass: false,
+            note: "잠시 후 다시 시도하거나 섹션 내용을 보완하세요.",
+          },
+        ],
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const onChange = (id: string, content: string) => {
@@ -192,7 +209,7 @@ export default function BusinessPlanPage() {
             {submissionResult.ok ? (
               <>
                 <CheckCircle2 className="h-4 w-4 text-secondary" />
-                제출 준비 완료 — 관리자 검수 대기열에 등록되었습니다
+                제출 준비 완료 — 사업계획서를 다운로드하거나 제출하세요
               </>
             ) : (
               <>

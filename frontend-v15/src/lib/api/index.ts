@@ -1,10 +1,6 @@
-import { adminReviewItems } from "@/data/adminReview";
 import { businessPlanDraft } from "@/data/businessPlan";
 import { companyProfile } from "@/data/company";
-import {
-  dashboardInsights,
-  dashboardStats,
-} from "@/data/adminReview";
+import { dashboardInsights, dashboardStats } from "@/data/dashboard";
 import { buildMatchingResults, buildMatchingSummary } from "@/lib/matching-score";
 import { getProgramById, programs } from "@/data/programs";
 import {
@@ -32,7 +28,6 @@ import {
 import { getPipelineForSkill } from "@/lib/business-plan-skill";
 import { prepareForSubmission } from "@/lib/business-plan-submission";
 import type {
-  AdminReviewItem,
   BusinessPlanDraft,
   CompanyProfile,
   DashboardInsight,
@@ -284,7 +279,7 @@ export const businessPlanApi = {
     return draftCache;
   },
 
-  /** submission-verifier + 로컬 체크 */
+  /** submission-verifier + 로컬 체크 (AI 실패·타임아웃 시 로컬 검증으로 폴백) */
   prepareForSubmission: async (): Promise<{
     draft: BusinessPlanDraft;
     result: SubmissionCheckResult;
@@ -311,12 +306,12 @@ export const businessPlanApi = {
             })),
           },
         };
-      } catch (error) {
-        if (!isAiFallbackError(error)) throw error;
+      } catch {
+        // AI 검증 실패 시 로컬 규칙 검증으로 폴백
       }
     }
 
-    await delay(600);
+    await delay(300);
     const { draft, result } = prepareForSubmission(draftCache);
     if (result.ok) draftCache = draft;
     return { draft: result.ok ? draft : draftCache, result };
@@ -345,22 +340,6 @@ export const diagnosisReportApi = {
 
 export const adminDashboardApi = {
   getSummary: fetchAdminDashboardSummary,
-};
-
-export const adminApi = {
-  listReviews: async (): Promise<AdminReviewItem[]> => {
-    await delay(200);
-    return adminReviewItems;
-  },
-  updateReview: async (
-    id: string,
-    patch: Partial<AdminReviewItem>,
-  ): Promise<AdminReviewItem> => {
-    await delay(300);
-    const item = adminReviewItems.find((r) => r.id === id);
-    if (!item) throw new Error("Not found");
-    return { ...item, ...patch };
-  },
 };
 
 export const authApi = {

@@ -5,7 +5,6 @@ import {
   Building2,
   Sparkles,
   ClipboardList,
-  ShieldCheck,
   Landmark,
   FileBarChart,
   LayoutPanelLeft,
@@ -23,7 +22,6 @@ const mainNavItems = [
 
 const adminNavItems = [
   { to: "/admin/dashboard", label: "관리자 대시보드", icon: LayoutPanelLeft },
-  { to: "/admin/review", label: "관리자 검수", icon: ShieldCheck },
 ];
 
 export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => (

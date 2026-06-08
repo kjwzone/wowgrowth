@@ -44,6 +44,7 @@ export type AdminBusinessPlanRow = {
   id: string;
   companyId: string;
   companyName: string;
+  applicantName: string;
   programId: string;
   programTitle: string;
   title: string;
@@ -67,17 +68,11 @@ export type AdminDashboardSummary = {
   matches: number;
   diagnosisReports: number;
   businessPlans: number;
-  pendingReviews: number;
   aiJobs: Record<JobStatus, number> & { total: number };
   recentFailedJobs: ReadonlyArray<{
     id: string;
     task_type: string;
     error_code: string | null;
-    created_at: string;
-  }>;
-  pendingReviewItems: ReadonlyArray<{
-    id: string;
-    title: string;
     created_at: string;
   }>;
   details: AdminDashboardDetails;
