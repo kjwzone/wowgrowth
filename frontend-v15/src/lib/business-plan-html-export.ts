@@ -14,7 +14,11 @@ import {
   pctOfTotal,
   sumBudgetItems,
 } from "@/lib/budget-execution-plan-model";
-import { buildTamSamSomTiers } from "@/lib/tam-sam-som-model";
+import {
+  buildTamSamSomTiers,
+  buildTamSamSomTiersFromTable,
+  type TamSamSomTier,
+} from "@/lib/tam-sam-som-model";
 import { parseDeepBlocks } from "@/lib/business-plan-outline";
 import {
   hasTeamComposition,
@@ -164,7 +168,10 @@ const TAM_RING_COLORS: Record<string, string> = {
 const renderTamSamSomDiagram = (content: string): string => {
   const tiers = buildTamSamSomTiers(content);
   if (!tiers) return "";
+  return renderTamSamSomTiersHtml(tiers);
+};
 
+const renderTamSamSomTiersHtml = (tiers: TamSamSomTier[]): string => {
   const svg = `<div class="tam-diagram-svg" aria-hidden="true">
     <svg viewBox="0 0 280 160" xmlns="http://www.w3.org/2000/svg">
       <path d="M 20 140 A 120 120 0 0 1 260 140 Z" fill="${TAM_RING_COLORS.tam}" stroke="#021028" stroke-width="1"/>
@@ -279,19 +286,37 @@ const renderTeamComposition = (content: string): string => {
   </div>`;
 };
 
+const PLACEHOLDER_TOKENS = [FORM_PLACEHOLDER, "[수정 필요]"];
+
 const highlightPlaceholder = (text: string): string => {
-  const escaped = escapeHtml(text);
-  return escaped.split(escapeHtml(FORM_PLACEHOLDER)).join(
-    `<span class="form-todo">${escapeHtml(FORM_PLACEHOLDER)}</span>`,
-  );
+  let escaped = escapeHtml(text);
+  for (const token of PLACEHOLDER_TOKENS) {
+    escaped = escaped
+      .split(escapeHtml(token))
+      .join(`<span class="form-todo">${escapeHtml(token)}</span>`);
+  }
+  return escaped;
 };
 
 const renderFormBlocks = (content: string): string => {
   const blocks = parseFormBlocks(content);
   if (blocks.length === 0) return "";
 
+  const imageToken = /^\[이미지\]\s*/;
+
   const blockHtml = blocks
     .map((block) => {
+      const isMarketBlock =
+        block.title.includes("목표 시장") || block.title.includes("시장 규모");
+      const marketTable = isMarketBlock
+        ? block.items.find((item) => item.kind === "table")
+        : undefined;
+      const marketTiers =
+        marketTable && marketTable.kind === "table"
+          ? buildTamSamSomTiersFromTable(marketTable.table.rows)
+          : null;
+      const diagramHtml = marketTiers ? renderTamSamSomTiersHtml(marketTiers) : "";
+
       const itemsHtml = block.items
         .map((item) => {
           if (item.kind === "table") {
@@ -309,6 +334,10 @@ const renderFormBlocks = (content: string): string => {
               .join("");
             return `<table class="form-table">${head}<tbody>${body}</tbody></table>`;
           }
+          if (imageToken.test(item.text)) {
+            const caption = item.text.replace(imageToken, "");
+            return `<div class="form-image"><span class="form-image-label">이미지 영역</span><span>${highlightPlaceholder(caption)}</span></div>`;
+          }
           if (item.kind === "bullet") {
             const numbered = /^\d+[).]/.test(item.text);
             const cls =
@@ -325,7 +354,7 @@ const renderFormBlocks = (content: string): string => {
       const heading = block.title
         ? `<h4 class="form-heading">${escapeHtml(block.title)}</h4>`
         : "";
-      return `<div class="form-block">${heading}${itemsHtml}</div>`;
+      return `<div class="form-block">${heading}${diagramHtml}${itemsHtml}</div>`;
     })
     .join("");
 
@@ -360,7 +389,9 @@ const renderBullets = (content: string): string => {
 const renderSectionVisualHtml = (title: string, content: string): string => {
   const deep = renderDeepOutline(content);
   if (
-    (title.includes("문제 인식") || title.includes("실현 가능성")) &&
+    (title.includes("문제 인식") ||
+      title.includes("실현 가능성") ||
+      title.includes("성장전략")) &&
     hasFormBlocks(content)
   ) {
     return `${renderFormBlocks(content)}${deep}`;
@@ -481,6 +512,8 @@ const BASE_STYLES = `
   .form-table th, .form-table td { border: 1px solid #e2e8f0; padding: .5rem .5rem; text-align: left; vertical-align: top; }
   .form-table th { background: #f1f5f9; font-weight: 600; }
   .form-todo { background: #fffbeb; color: #b45309; border-radius: 4px; padding: 0 .25rem; }
+  .form-image { display: flex; flex-direction: column; align-items: center; gap: .25rem; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 2rem 1rem; text-align: center; color: #64748b; background: #f8fafc; font-size: .875rem; }
+  .form-image-label { font-size: .75rem; color: #94a3b8; }
   .bullet-list { padding-left: 1.25rem; font-size: .875rem; }
   .bullet-list li { margin-bottom: .375rem; }
   .deep-outline { margin-top: 1rem; display: flex; flex-direction: column; gap: .875rem; }

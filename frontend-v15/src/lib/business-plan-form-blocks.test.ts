@@ -61,4 +61,29 @@ describe("business-plan-form-blocks", () => {
     expect(titles.some((t) => t.includes("문제점"))).toBe(true);
     expect(titles.some((t) => t.includes("필요성"))).toBe(true);
   });
+
+  it("generated 성장전략 section contains required form blocks", () => {
+    const draft = createEmptyDraft("prog-001");
+    const growth = draft.sections.find((s) => s.title.includes("성장전략"));
+    expect(growth).toBeDefined();
+    const content = growth!.content;
+
+    expect(hasFormBlocks(content)).toBe(true);
+    const titles = parseFormBlocks(content).map((b) => b.title);
+    expect(titles.some((t) => t.includes("목표 시장"))).toBe(true);
+    expect(titles.some((t) => t.includes("고객 요구사항"))).toBe(true);
+    expect(titles.some((t) => t.includes("사업화 목표"))).toBe(true);
+    expect(titles.some((t) => t.includes("사업화 전략"))).toBe(true);
+    expect(titles.some((t) => t.includes("글로벌"))).toBe(true);
+    expect(titles.some((t) => t.includes("성장성"))).toBe(true);
+    expect(titles.some((t) => t.includes("사업 추진 일정"))).toBe(true);
+    expect(titles.some((t) => t.includes("기대효과"))).toBe(true);
+    expect(content).toContain("[수정 필요]");
+  });
+
+  it("parses <...> angle headings", () => {
+    const content = ["<사업추진 일정>", "| a | b |", "| 1 | 2 |"].join("\n");
+    const blocks = parseFormBlocks(content);
+    expect(blocks[0]?.title).toBe("사업추진 일정");
+  });
 });

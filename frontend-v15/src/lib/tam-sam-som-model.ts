@@ -42,12 +42,42 @@ const DEFAULT_EXAMPLES: Record<TamSamSomTierKey, string> = {
 };
 
 const extractValueLabel = (segment: string): string => {
-  const match = segment.match(/([\d,]+)\s*(만?\s*社|개사|억\s*원|만\s*원|명|%)/);
+  const match = segment.match(
+    /([\d,]+)\s*(조\s*원|억\s*원|만?\s*社|개사|만\s*원|명|%)/,
+  );
   if (match) {
     return `${match[1]?.replace(/,/g, "")}${match[2]?.replace(/\s/g, "")}`;
   }
   const num = segment.match(/([\d,]+)/);
   return num ? num[1]!.replace(/,/g, "") : "";
+};
+
+const TIER_KEYS: TamSamSomTierKey[] = ["tam", "sam", "som"];
+
+/** "목표 시장 및 고객 분석" 표(시장 구분/규모/산출 근거)에서 다이어그램 티어 생성 */
+export const buildTamSamSomTiersFromTable = (
+  rows: string[][],
+): TamSamSomTier[] | null => {
+  if (rows.length === 0) return null;
+
+  const findRow = (key: TamSamSomTierKey, index: number): string[] | undefined =>
+    rows.find((row) => new RegExp(key, "i").test(row[0] ?? "")) ?? rows[index];
+
+  return TIER_KEYS.map((key, index) => {
+    const row = findRow(key, index);
+    const meta = TIER_META[key];
+    const sizeCell = (row?.[1] ?? "").trim();
+    const basisCell = (row?.[2] ?? "").trim();
+    return {
+      key,
+      acronym: meta.acronym,
+      titleKo: meta.titleKo,
+      titleEn: meta.titleEn,
+      focusKo: meta.focusKo,
+      example: basisCell || DEFAULT_EXAMPLES[key],
+      valueLabel: sizeCell || "—",
+    };
+  });
 };
 
 /** TAM/SAM/SOM 한 줄(■ TAM/SAM/SOM: …)에서 한글 예시·규모 추출 */
@@ -59,7 +89,9 @@ export const buildTamSamSomTiers = (content: string): TamSamSomTier[] | null => 
 
   if (!line) return null;
 
-  const body = line.replace(/^■\s*TAM\s*\/\s*SAM\s*\/\s*SOM\s*:\s*/i, "").trim();
+  const body = line
+    .replace(/^■?\s*TAM\s*\/\s*SAM\s*\/\s*SOM\s*:?\s*/i, "")
+    .trim();
   const segments = body.split("/").map((part) => part.trim()).filter(Boolean);
   const keys: TamSamSomTierKey[] = ["tam", "sam", "som"];
 

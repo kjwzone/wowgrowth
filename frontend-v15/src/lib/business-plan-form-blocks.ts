@@ -8,6 +8,7 @@ export type FormItem =
 export type FormBlock = { title: string; items: FormItem[] };
 
 const HEADER_RE = /^■\s*(.+)$/;
+const ANGLE_HEADER_RE = /^<\s*(.+?)\s*>$/;
 const DEEP_RE = /심화\s*[—-]/;
 const SUB_BULLET_RE = /^(○|▶|◦|▪)\s*/;
 const NUM_BULLET_RE = /^(\d+\)|\d+\.)\s*/;
@@ -58,6 +59,14 @@ export const parseFormBlocks = (content: string): FormBlock[] => {
       flushTable();
       if (current) blocks.push(current);
       current = { title: headerMatch[1]!.trim(), items: [] };
+      continue;
+    }
+
+    const angleMatch = line.match(ANGLE_HEADER_RE);
+    if (angleMatch && !line.includes("|") && angleMatch[1]!.length <= 40) {
+      flushTable();
+      if (current) blocks.push(current);
+      current = { title: angleMatch[1]!.trim(), items: [] };
       continue;
     }
 

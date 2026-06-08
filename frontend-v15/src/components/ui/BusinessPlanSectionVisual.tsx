@@ -19,7 +19,10 @@ import {
   parseTimelinePhases,
 } from "@/lib/business-plan-content-parser";
 import { parseDeepBlocks, splitPrimaryAndDeep } from "@/lib/business-plan-outline";
-import { buildTamSamSomTiers } from "@/lib/tam-sam-som-model";
+import {
+  buildTamSamSomTiers,
+  buildTamSamSomTiersFromTable,
+} from "@/lib/tam-sam-som-model";
 import { cn } from "@/lib/utils";
 import {
   hasTeamComposition,
@@ -352,21 +355,20 @@ const TeamCompositionView = ({ content }: { content: string }) => {
   );
 };
 
+const PLACEHOLDER_SPLIT_RE = /(\[작성 필요\]|\[수정 필요\])/;
+
 const renderPlaceholderText = (text: string): ReactNode => {
-  if (!text.includes(FORM_PLACEHOLDER)) return text;
-  const parts = text.split(FORM_PLACEHOLDER);
-  return parts.flatMap((part, index) =>
-    index === 0
-      ? [part]
-      : [
-          <span
-            key={index}
-            className="rounded bg-amber-50 px-1 text-amber-700/80"
-          >
-            {FORM_PLACEHOLDER}
-          </span>,
-          part,
-        ],
+  if (!text.includes(FORM_PLACEHOLDER) && !text.includes("[수정 필요]"))
+    return text;
+  const parts = text.split(PLACEHOLDER_SPLIT_RE);
+  return parts.map((part, index) =>
+    part === FORM_PLACEHOLDER || part === "[수정 필요]" ? (
+      <span key={index} className="rounded bg-amber-50 px-1 text-amber-700/80">
+        {part}
+      </span>
+    ) : (
+      part
+    ),
   );
 };
 
@@ -400,47 +402,87 @@ const FormTableView = ({ table }: { table: FormTable }) => {
   );
 };
 
-const FormBlockView = ({ block }: { block: FormBlock }) => (
-  <div className="space-y-2.5">
-    {block.title ? (
-      <h4 className="flex items-center gap-2 text-sm font-bold text-primary">
-        <span className="h-3.5 w-1 rounded-full bg-primary" />
-        {block.title}
-      </h4>
-    ) : null}
-    <div className="space-y-2">
-      {block.items.map((item, index) => {
-        if (item.kind === "table") {
-          return <FormTableView key={index} table={item.table} />;
-        }
-        if (item.kind === "bullet") {
-          const numbered = /^\d+[).]/.test(item.text);
-          return (
-            <div
-              key={index}
-              className={cn(
-                "flex gap-2 text-sm leading-relaxed text-on-surface-variant",
-                item.level === 2 ? "pl-5" : "pl-1",
-              )}
-            >
-              {item.level === 2 ? (
-                <span className="text-on-surface-variant/50">○</span>
-              ) : numbered ? null : (
-                <span className="text-secondary">·</span>
-              )}
-              <span>{renderPlaceholderText(item.text)}</span>
-            </div>
-          );
-        }
-        return (
-          <p key={index} className="text-sm leading-relaxed text-on-surface-variant">
-            {renderPlaceholderText(item.text)}
-          </p>
-        );
-      })}
-    </div>
+const FormImagePlaceholder = ({ caption }: { caption: string }) => (
+  <div className="flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-outline-variant/50 bg-surface-container/30 px-4 py-8 text-center">
+    <span className="text-xs font-medium text-on-surface-variant/70">이미지 영역</span>
+    <span className="text-sm text-on-surface-variant/80">{renderPlaceholderText(caption)}</span>
   </div>
 );
+
+const IMAGE_TOKEN_RE = /^\[이미지\]\s*/;
+
+const FormBlockView = ({ block }: { block: FormBlock }) => {
+  const isMarketBlock =
+    block.title.includes("목표 시장") || block.title.includes("시장 규모");
+  const marketTable = isMarketBlock
+    ? block.items.find(
+        (item): item is Extract<FormBlock["items"][number], { kind: "table" }> =>
+          item.kind === "table",
+      )?.table
+    : undefined;
+  const marketTiers = marketTable
+    ? buildTamSamSomTiersFromTable(marketTable.rows)
+    : null;
+
+  return (
+    <div className="space-y-2.5">
+      {block.title ? (
+        <h4 className="flex items-center gap-2 text-sm font-bold text-primary">
+          <span className="h-3.5 w-1 rounded-full bg-primary" />
+          {block.title}
+        </h4>
+      ) : null}
+      {marketTiers ? <TamSamSomDiagram tiers={marketTiers} /> : null}
+      <div className="space-y-2">
+        {block.items.map((item, index) => {
+          if (item.kind === "table") {
+            return <FormTableView key={index} table={item.table} />;
+          }
+          if (item.kind === "bullet") {
+            if (IMAGE_TOKEN_RE.test(item.text)) {
+              return (
+                <FormImagePlaceholder
+                  key={index}
+                  caption={item.text.replace(IMAGE_TOKEN_RE, "")}
+                />
+              );
+            }
+            const numbered = /^\d+[).]/.test(item.text);
+            return (
+              <div
+                key={index}
+                className={cn(
+                  "flex gap-2 text-sm leading-relaxed text-on-surface-variant",
+                  item.level === 2 ? "pl-5" : "pl-1",
+                )}
+              >
+                {item.level === 2 ? (
+                  <span className="text-on-surface-variant/50">○</span>
+                ) : numbered ? null : (
+                  <span className="text-secondary">·</span>
+                )}
+                <span>{renderPlaceholderText(item.text)}</span>
+              </div>
+            );
+          }
+          if (IMAGE_TOKEN_RE.test(item.text)) {
+            return (
+              <FormImagePlaceholder
+                key={index}
+                caption={item.text.replace(IMAGE_TOKEN_RE, "")}
+              />
+            );
+          }
+          return (
+            <p key={index} className="text-sm leading-relaxed text-on-surface-variant">
+              {renderPlaceholderText(item.text)}
+            </p>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 const FormBlocksView = ({ content }: { content: string }) => {
   const blocks = parseFormBlocks(content);
@@ -547,6 +589,9 @@ export const BusinessPlanSectionVisual = ({
   }
 
   if (sectionTitle.includes("성장전략")) {
+    if (hasFormBlocks(content)) {
+      return <FormBlocksView content={content} />;
+    }
     const tamTiers = buildTamSamSomTiers(content);
     const gtm = bullets.find((b) => /GTM|채널|BM/i.test(b));
     return (

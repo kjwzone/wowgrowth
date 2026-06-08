@@ -125,6 +125,67 @@ const buildSolutionSectionContent = (ctx: GenerationContext): string => {
     .join("\n");
 };
 
+const buildGrowthSectionContent = (ctx: GenerationContext): string => {
+  const { program } = ctx;
+  const period = program?.period ?? "지원사업 협약기간";
+  return [
+    "■ 목표 시장 및 고객 분석",
+    "| 시장 구분 | 규모(시장 금액) | 산출 근거 (Estimation Logic) |",
+    `| TAM (전체시장) | ${FORM_TODO} | 본 아이템이 속한 전체 시장 규모 — 공신력 있는 시장 보고서의 총량 기준 |`,
+    `| SAM (유효시장) | ${FORM_TODO} | 전체 시장 중 자사 솔루션이 도달 가능한 세그먼트 × 전환율 적용 |`,
+    `| SOM (수익시장, 초기 3년) | ${FORM_TODO} | 핵심 타겟 고객군 Bottom-up(고객 수 × 객단가) 산출 |`,
+    "○ TAM/SAM/SOM 수치는 고객사 수가 아닌 시장 규모 금액으로 기재",
+    "■ 고객 요구사항 분석",
+    "| 고객군 | 타겟 대상 | 핵심 니즈(Pain Point) | 개선점(Solution) |",
+    `| 1차 타겟(Core) | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} |`,
+    `| 2차 타겟(Expansion) | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} |`,
+    `| 3차 타겟(Potential) | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} |`,
+    "■ 사업화 목표",
+    "○ 매출·수출·투자 목표 (단위: 백만원)",
+    "| 구분 | 1년차 | 2년차 | 3년차 | 4년차 | 5년차 |",
+    `| 매출 계획 | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} |`,
+    `| 수출 계획 | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} |`,
+    `| 투자 계획 | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} |`,
+    "○ 고용 창출 목표 (단위: 명)",
+    "| 구분 | 당해 | 종료후 1년 | 종료후 2년 | 종료후 3년 |",
+    `| 신규 고용 | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} |`,
+    `| 상시 고용 | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} |`,
+    "■ 사업화 전략",
+    "○ 수익 모델 (BM)",
+    "| 구분 | 타겟 고객 | 수익 구조(Pricing) | 예상 단가·매출 |",
+    `| B2B SaaS(구독형) | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} |`,
+    `| API 공급(종량제) | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} |`,
+    "○ 경쟁사 비교 및 차별화 전략",
+    "| 구분 | 빅테크 범용 AI | 기존 업계 | 자사(동 과제 산출물) |",
+    `| 핵심 기술 | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} |`,
+    `| 차별화 포인트 | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} |`,
+    `○ 시장 진입·마케팅 전략(GTM) — 1년차 레퍼런스 마케팅 / 2년차 파트너십 확산 / 3년차 글로벌 확장 ${FORM_TODO}`,
+    `○ [이미지] 비즈니스 모델(BM) 구조도 — ${FORM_TODO} (구조도 이미지 첨부)`,
+    "■ 글로벌 진출 로드맵",
+    `1) Phase 1 — 기술 검증·해외 베타 테스트 [수정 필요]`,
+    `2) Phase 2 — 본격 진출(마켓플레이스 입점·현지 인증) [수정 필요]`,
+    `3) Phase 3 — 현지화·파트너십 확대 [수정 필요]`,
+    "■ 목표시장의 성장성, 진출 가능성",
+    "| 구분 | 핵심 주제 | 세부 내용 및 근거 |",
+    `| 시장 성장성 | ${FORM_TODO} | ${FORM_TODO} |`,
+    `| 진출 가능성 | ${FORM_TODO} | ${FORM_TODO} |`,
+    `| 파급 효과 | ${FORM_TODO} | ${FORM_TODO} |`,
+    "■ 사업 추진 일정 (전체 사업단계)",
+    "| 구분 | 추진 내용 | 추진 기간 | 세부 내용 |",
+    `| 1 | 핵심 인력 채용·개발 환경 구축 | ${period} 초기 | ${FORM_TODO} |`,
+    `| 2 | 핵심 기능 개발·고도화 | ${period} 중 | ${FORM_TODO} |`,
+    `| 3 | 시제품(MVP) 완성·실증 | ${period} 말 | ${FORM_TODO} |`,
+    `| 4 | 정식 서비스·초기 사업화 | 종료 후 1년 | ${FORM_TODO} |`,
+    `| 5 | 매출 확대·투자 유치 | 종료 후 2년 | ${FORM_TODO} |`,
+    `| 6 | 글로벌 진출·시장 확장 | 종료 후 3년 | ${FORM_TODO} |`,
+    "■ 기대효과",
+    "| 구분 | 내용 | 금전적 가치(정량) |",
+    `| 기술적 파급효과 | ${FORM_TODO} | ${FORM_TODO} |`,
+    `| 경제적 파급효과 | ${FORM_TODO} | ${FORM_TODO} |`,
+    `| 사회적 파급효과 | ${FORM_TODO} | ${FORM_TODO} |`,
+  ].join("\n");
+};
+
 const sectionContentBuilders: Record<
   BusinessPlanSkillId,
   Record<string, (ctx: GenerationContext) => string>
@@ -161,14 +222,8 @@ const sectionContentBuilders: Record<
     "2. 실현 가능성 Solution_창업 아이템의 개발 계획": (ctx) =>
       buildSolutionSectionContent(ctx),
     "사업비 집행 계획": (ctx) => buildBudgetSectionContent(ctx),
-    "3. 성장전략 Scale-up_사업화 추진 전략": ({ company, matching }) =>
-      [
-        "■ TAM/SAM/SOM: 국내 중소·벤처 약 400만社 / 정부지원 수요 50만社 / 1차 목표 5,000社",
-        `■ BM: SaaS 구독 + 컨설턴트 B2B + 성공 수수료`,
-        `■ 2026 목표: MAU 500社 · 매칭 적합도 ${matching?.score ?? 90}% 유지`,
-        `■ GTM: ${company.name} — 창업진흥원·K-Startup 연계 · 세무·노무 파트너 채널`,
-        "■ ESG: 중소기업 디지털 전환·일자리 창출 기여",
-      ].join("\n"),
+    "3. 성장전략 Scale-up_사업화 추진 전략": (ctx) =>
+      buildGrowthSectionContent(ctx),
     "4. 팀 구성 Team_대표자 및 팀원 구성 계획": ({ company, program }) =>
       serializeTeamCompositionPlan(buildTeamCompositionPlan(company, program)),
   },
