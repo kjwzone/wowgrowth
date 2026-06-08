@@ -3,9 +3,11 @@ import { Link } from "react-router-dom";
 import { Download, FileSpreadsheet, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { DiagnosisHarnessReport } from "@/components/diagnosis/DiagnosisHarnessReport";
-import { diagnosisReportApi } from "@/lib/api";
+import { companyApi, diagnosisReportApi } from "@/lib/api";
 import type { CompanyDiagnosisReport } from "@/lib/company-diagnosis";
 import { COMMENTARY_SECTIONS } from "@/lib/company-diagnosis";
+import { downloadDiagnosisHarnessXlsx } from "@/lib/diagnosis-harness-xlsx";
+import type { CompanyProfile } from "@/types";
 
 const formatDiagnosisBasisNote = (generatedAt: string): string => {
   const [year, month, day] = generatedAt.split("-");
@@ -17,9 +19,15 @@ const formatDiagnosisBasisNote = (generatedAt: string): string => {
 
 export default function CompanyDiagnosisReportPage() {
   const [report, setReport] = useState<CompanyDiagnosisReport | null>(null);
+  const [company, setCompany] = useState<CompanyProfile | null>(null);
+  const [xlsxLoading, setXlsxLoading] = useState(false);
+  const [xlsxError, setXlsxError] = useState<string | null>(null);
 
   useEffect(() => {
-    void diagnosisReportApi.get().then(setReport);
+    void Promise.all([diagnosisReportApi.get(), companyApi.get()]).then(([nextReport, nextCompany]) => {
+      setReport(nextReport);
+      setCompany(nextCompany);
+    });
   }, []);
 
   const downloadReport = () => {
@@ -55,7 +63,24 @@ export default function CompanyDiagnosisReportPage() {
     URL.revokeObjectURL(url);
   };
 
-  if (!report) {
+  const downloadXlsx = async () => {
+    if (!report || !company) return;
+    setXlsxLoading(true);
+    setXlsxError(null);
+    try {
+      await downloadDiagnosisHarnessXlsx(report, company);
+    } catch (error: unknown) {
+      setXlsxError(
+        error instanceof Error
+          ? error.message
+          : "xlsx 파일 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    } finally {
+      setXlsxLoading(false);
+    }
+  };
+
+  if (!report || !company) {
     return <p className="text-on-surface-variant">기업진단보고서 로딩 중...</p>;
   }
 
@@ -83,20 +108,23 @@ export default function CompanyDiagnosisReportPage() {
             </button>
             <button
               type="button"
-              title="corporate-diagnosis-harness 스킬로 xlsx 생성"
-              className="inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-on-secondary hover:opacity-90"
-              onClick={() =>
-                window.alert(
-                  "Cursor에서 @corporate-diagnosis-harness 스킬을 실행하면 report.xlsx(IU.Partners 6시트)를 생성할 수 있습니다.",
-                )
-              }
+              title="IU.Partners 6시트 양식 xlsx 다운로드"
+              disabled={xlsxLoading}
+              className="inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-on-secondary hover:opacity-90 disabled:opacity-60"
+              onClick={() => void downloadXlsx()}
             >
               <FileSpreadsheet className="h-4 w-4" />
-              xlsx 생성 (하네스)
+              {xlsxLoading ? "xlsx 생성 중..." : "xlsx 생성 (하네스)"}
             </button>
           </div>
         }
       />
+
+      {xlsxError ? (
+        <p className="mb-4 rounded-lg border border-error/30 bg-error/5 px-4 py-3 text-sm text-error">
+          {xlsxError}
+        </p>
+      ) : null}
 
       <DiagnosisHarnessReport report={report} />
     </div>
