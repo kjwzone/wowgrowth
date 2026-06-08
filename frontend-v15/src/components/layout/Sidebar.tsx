@@ -1,4 +1,6 @@
 import { Link, NavLink } from "react-router-dom";
+import { getAppHomePath } from "@/lib/auth-routes";
+import { useSession } from "@/lib/use-session";
 import {
   LayoutDashboard,
   FileText,
@@ -24,13 +26,17 @@ const adminNavItems = [
   { to: "/admin/dashboard", label: "관리자 대시보드", icon: LayoutPanelLeft },
 ];
 
-export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => (
+export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
+  const { session } = useSession();
+  const homePath = getAppHomePath(session);
+
+  return (
   <aside className="flex h-full w-[var(--spacing-sidebar)] shrink-0 flex-col border-r border-outline-variant/30 bg-white">
     <Link
-      to="/"
+      to={homePath}
       onClick={onNavigate}
       className="flex h-16 items-center gap-2 border-b border-outline-variant/30 px-5 transition hover:bg-surface-container"
-      aria-label="WOW Growth 홈"
+      aria-label="대시보드 홈"
     >
       <ClipboardList className="h-6 w-6 text-secondary" />
       <span className="text-lg font-bold text-primary">WOW Growth</span>
@@ -88,4 +94,5 @@ export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => (
       MVP ver1.5 · 더미 데이터
     </div>
   </aside>
-);
+  );
+};

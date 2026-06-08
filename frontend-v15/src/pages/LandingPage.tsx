@@ -8,7 +8,10 @@ import {
   Shield,
   BarChart3,
   Zap,
+  LayoutDashboard,
 } from "lucide-react";
+import { getAppHomePath } from "@/lib/auth-routes";
+import { useSession } from "@/lib/use-session";
 
 const features = [
   { icon: Target, title: "AI 기업진단", desc: "기업 프로필 기반 성장·지원 준비도 분석" },
@@ -26,14 +29,17 @@ const steps = [
 ];
 
 export default function LandingPage() {
+  const { session, isLoggedIn } = useSession();
+  const appHomePath = getAppHomePath(session);
+
   return (
     <div className="min-h-screen bg-surface-bright">
       <header className="fixed top-0 z-50 w-full border-b border-outline-variant/30 bg-white/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-6">
-          <div className="flex items-center gap-2">
+          <Link to={isLoggedIn ? appHomePath : "/"} className="flex items-center gap-2">
             <BarChart3 className="h-6 w-6 text-secondary" />
             <span className="text-lg font-bold text-primary">WOW Growth</span>
-          </div>
+          </Link>
           <nav className="hidden items-center gap-8 md:flex">
             <a href="#features" className="text-sm text-on-surface-variant hover:text-primary">
               기능 안내
@@ -43,15 +49,32 @@ export default function LandingPage() {
             </a>
           </nav>
           <div className="flex items-center gap-3">
-            <Link to="/login" className="hidden text-sm font-medium text-primary md:block">
-              로그인
-            </Link>
-            <Link
-              to="/login"
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:bg-primary-container"
-            >
-              시작하기
-            </Link>
+            {isLoggedIn && session ? (
+              <>
+                <span className="hidden text-sm text-on-surface-variant md:block">
+                  {session.name}님
+                </span>
+                <Link
+                  to={appHomePath}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:bg-primary-container"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  대시보드
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="hidden text-sm font-medium text-primary md:block">
+                  로그인
+                </Link>
+                <Link
+                  to="/login"
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:bg-primary-container"
+                >
+                  시작하기
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -74,10 +97,10 @@ export default function LandingPage() {
                 기업진단부터 사업계획서 초안 작성까지 한 번에
               </p>
               <Link
-                to="/login"
+                to={isLoggedIn ? appHomePath : "/login"}
                 className="mt-8 inline-flex items-center gap-2 rounded-xl bg-secondary px-8 py-4 text-lg font-semibold text-on-secondary shadow-md transition hover:bg-secondary-container hover:shadow-lg"
               >
-                무료로 기업진단 시작하기
+                {isLoggedIn ? "대시보드로 이동" : "무료로 기업진단 시작하기"}
                 <ArrowRight className="h-5 w-5" />
               </Link>
               <div className="mt-8 flex flex-wrap gap-6 text-sm text-on-surface-variant">
@@ -185,10 +208,10 @@ export default function LandingPage() {
               스타트업·중소기업·컨설턴트 모두 무료로 체험할 수 있습니다.
             </p>
             <Link
-              to="/login"
+              to={isLoggedIn ? appHomePath : "/login"}
               className="mt-8 inline-flex rounded-xl bg-secondary px-8 py-3 font-semibold text-on-secondary hover:bg-secondary-container"
             >
-              무료 시작하기
+              {isLoggedIn ? "대시보드로 이동" : "무료 시작하기"}
             </Link>
           </div>
         </section>

@@ -1,17 +1,25 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BarChart3, Lock, ShieldCheck } from "lucide-react";
 import { authApi } from "@/lib/api";
-import { persistSession } from "@/lib/use-session";
+import { getAppHomePath } from "@/lib/auth-routes";
+import { persistSession, useSession } from "@/lib/use-session";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { session, isLoggedIn } = useSession();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isLoggedIn && session) {
+      navigate(getAppHomePath(session), { replace: true });
+    }
+  }, [isLoggedIn, session, navigate]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +31,7 @@ export default function LoginPage() {
           ? await authApi.login(email, password)
           : await authApi.signup(email, password, name);
       persistSession(session);
-      navigate(session.role === "admin" ? "/admin/dashboard" : "/dashboard");
+      navigate(getAppHomePath(session));
     } catch {
       setError("로그인에 실패했습니다. 다시 시도해 주세요.");
     } finally {
