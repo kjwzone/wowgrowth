@@ -32,6 +32,13 @@ import {
   type RepresentativeRow,
   type TeamTable,
 } from "@/lib/team-composition-model";
+import {
+  FORM_PLACEHOLDER,
+  hasFormBlocks,
+  parseFormBlocks,
+  type FormBlock,
+  type FormTable,
+} from "@/lib/business-plan-form-blocks";
 
 const CHART_COLORS = ["#0040e0", "#031635", "#5b8def", "#93b4f4", "#c5d7fa"];
 
@@ -345,6 +352,108 @@ const TeamCompositionView = ({ content }: { content: string }) => {
   );
 };
 
+const renderPlaceholderText = (text: string): ReactNode => {
+  if (!text.includes(FORM_PLACEHOLDER)) return text;
+  const parts = text.split(FORM_PLACEHOLDER);
+  return parts.flatMap((part, index) =>
+    index === 0
+      ? [part]
+      : [
+          <span
+            key={index}
+            className="rounded bg-amber-50 px-1 text-amber-700/80"
+          >
+            {FORM_PLACEHOLDER}
+          </span>,
+          part,
+        ],
+  );
+};
+
+const FormTableView = ({ table }: { table: FormTable }) => {
+  const columns = table.columns;
+  return (
+    <div className="overflow-x-auto rounded-lg border border-outline-variant/30">
+      <table className="w-full min-w-[480px] text-left text-sm">
+        <thead className="bg-surface-container text-xs uppercase text-on-surface-variant">
+          <tr>
+            {columns.map((column, index) => (
+              <th key={`${index}-${column}`} className="px-3 py-2 font-medium">
+                {renderPlaceholderText(column)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {table.rows.map((row, rowIndex) => (
+            <tr key={rowIndex} className="border-t border-outline-variant/20 align-top">
+              {columns.map((_, cellIndex) => (
+                <td key={cellIndex} className="px-3 py-2.5 text-on-surface-variant">
+                  {renderPlaceholderText(row[cellIndex] ?? "")}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+const FormBlockView = ({ block }: { block: FormBlock }) => (
+  <div className="space-y-2.5">
+    {block.title ? (
+      <h4 className="flex items-center gap-2 text-sm font-bold text-primary">
+        <span className="h-3.5 w-1 rounded-full bg-primary" />
+        {block.title}
+      </h4>
+    ) : null}
+    <div className="space-y-2">
+      {block.items.map((item, index) => {
+        if (item.kind === "table") {
+          return <FormTableView key={index} table={item.table} />;
+        }
+        if (item.kind === "bullet") {
+          const numbered = /^\d+[).]/.test(item.text);
+          return (
+            <div
+              key={index}
+              className={cn(
+                "flex gap-2 text-sm leading-relaxed text-on-surface-variant",
+                item.level === 2 ? "pl-5" : "pl-1",
+              )}
+            >
+              {item.level === 2 ? (
+                <span className="text-on-surface-variant/50">○</span>
+              ) : numbered ? null : (
+                <span className="text-secondary">·</span>
+              )}
+              <span>{renderPlaceholderText(item.text)}</span>
+            </div>
+          );
+        }
+        return (
+          <p key={index} className="text-sm leading-relaxed text-on-surface-variant">
+            {renderPlaceholderText(item.text)}
+          </p>
+        );
+      })}
+    </div>
+  </div>
+);
+
+const FormBlocksView = ({ content }: { content: string }) => {
+  const blocks = parseFormBlocks(content);
+  return (
+    <div className="space-y-5">
+      {blocks.map((block, index) => (
+        <FormBlockView key={index} block={block} />
+      ))}
+      <SectionDeepExtras content={content} />
+    </div>
+  );
+};
+
 const SectionDeepExtras = ({ content }: { content: string }) => {
   const deepBlocks = parseDeepBlocks(content);
   if (deepBlocks.length === 0) return null;
@@ -390,6 +499,9 @@ export const BusinessPlanSectionVisual = ({
   }
 
   if (sectionTitle.includes("문제 인식")) {
+    if (hasFormBlocks(content)) {
+      return <FormBlocksView content={content} />;
+    }
     return (
       <div className="space-y-4">
         <BulletCalloutList items={bullets.slice(0, 6)} />
@@ -402,6 +514,9 @@ export const BusinessPlanSectionVisual = ({
   }
 
   if (sectionTitle.includes("실현 가능성")) {
+    if (hasFormBlocks(content)) {
+      return <FormBlocksView content={content} />;
+    }
     const phases = parseTimelinePhases(primary);
     return (
       <div className="space-y-4">

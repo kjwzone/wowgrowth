@@ -65,6 +65,66 @@ const buildBudgetSectionContent = (ctx: GenerationContext): string => {
   return buildBudgetSectionContentFromProgram(ctx.program, ctx.company);
 };
 
+const FORM_TODO = "[작성 필요]";
+
+const buildProblemSectionContent = (ctx: GenerationContext): string => {
+  const { company, matching } = ctx;
+  const gaps = matching?.gaps ?? [];
+  return [
+    "■ (문제점) 고객·시장이 겪는 핵심 문제",
+    `1) ${gaps[0] ?? `${FORM_TODO} — 시장·고객의 첫 번째 문제점(정량 지표 포함)`}`,
+    `2) ${gaps[1] ?? `${FORM_TODO} — 두 번째 문제점(비용·시간·품질 손실 등)`}`,
+    `3) ${FORM_TODO} — 세 번째 문제점(구조적·기술적 한계)`,
+    `4) ${FORM_TODO} — 네 번째 문제점(현장 도입·확산 장벽)`,
+    "■ (필요성) 본 아이템이 기존 문제를 해결할 수 있는 이유",
+    `1) ${company.product} — 위 문제를 해결하는 핵심 접근 및 기술적 근거`,
+    `2) 시장·정책 필요성 — ${matching?.suggestions?.[0] ?? FORM_TODO}`,
+    `3) 차별적 해결 근거 — ${company.patents[0] ? `${company.patents[0]} 기반 차별성` : FORM_TODO}`,
+  ].join("\n");
+};
+
+const buildSolutionSectionContent = (ctx: GenerationContext): string => {
+  const { company, program } = ctx;
+  const period = program?.period ? ` (${program.period})` : "";
+  return [
+    "■ 선행 개발 실적",
+    "| 연도 | 거래처 | 항목 | 내역 | 매출액(원) |",
+    `| ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} |`,
+    "○ 보유 실적이 없을 경우 위 양식에 추후 기재(공란 유지)",
+    "■ 지식재산권 확보 현황",
+    "| 구분 | 출원·등록번호 | 국가명 | 권리명 | 출원·등록일 | 권리자 |",
+    company.patents[0]
+      ? `| 특허 | ${FORM_TODO} | 대한민국 | ${company.patents[0]} | ${FORM_TODO} | ${FORM_TODO} |`
+      : `| ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} |`,
+    company.patents[1]
+      ? `| 특허 | ${FORM_TODO} | 대한민국 | ${company.patents[1]} | ${FORM_TODO} | ${FORM_TODO} |`
+      : "",
+    "■ 본 과제 수행 시 선행개발 결과 활용 계획",
+    `1) 기술적 측면 — 검증된 요소 기술의 파이프라인 통합·고도화 (${company.product} 핵심 모듈에 이식) ${FORM_TODO}`,
+    "2) 사업적 측면 — 기 확보 네트워크·레퍼런스를 테스트베드·세일즈로 활용 " + FORM_TODO,
+    "3) 데이터 및 운영 측면 — 실전 데이터·운영 노하우를 학습·검증·운영에 활용 " + FORM_TODO,
+    "■ 세부 개발 내용 및 방법",
+    `1) [핵심 모듈 1] ${FORM_TODO} — 설계·구현 방법`,
+    `2) [핵심 모듈 2] ${FORM_TODO} — 검증·품질 확보 방법`,
+    `3) [핵심 모듈 3] ${FORM_TODO} — 통합·자동화 방법`,
+    `4) [UX/UI] ${FORM_TODO} — 사용자 인터페이스·사용성`,
+    `○ MVP 예상도 — 협약기간${period} 내 시제품(베타) 범위·핵심 기능·산출물 ${FORM_TODO}`,
+    "■ 경쟁기술 대비 차별성 및 우월성",
+    "| 기능·기술 항목 | 자사 | 경쟁사 A | 경쟁사 B | 비고(기술적 차별성) |",
+    `| ${FORM_TODO} | O | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} |`,
+    `| ${FORM_TODO} | O | ${FORM_TODO} | ${FORM_TODO} | ${FORM_TODO} |`,
+    "■ 사업 추진 일정 (협약기간 내)",
+    "| 구분 | 추진 내용 | 추진 기간 | 세부 내용 |",
+    `| 1 | 핵심 인력 채용·개발 환경 구축 | 1~2개월 | ${FORM_TODO} |`,
+    `| 2 | 핵심 모듈 설계·아키텍처 | 1~3개월 | ${FORM_TODO} |`,
+    `| 3 | 핵심 기능 개발 | 3~6개월 | ${FORM_TODO} |`,
+    `| 4 | 통합·검증·고도화 | 6~8개월 | ${FORM_TODO} |`,
+    `| 5 | 시제품(MVP) 완성·실증 | 9~10개월 | ${FORM_TODO} |`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+};
+
 const sectionContentBuilders: Record<
   BusinessPlanSkillId,
   Record<string, (ctx: GenerationContext) => string>
@@ -96,21 +156,10 @@ const sectionContentBuilders: Record<
       ]
         .filter(Boolean)
         .join("\n"),
-    "1. 문제 인식 Problem_창업 아이템의 필요성": ({ company, matching }) =>
-      [
-        "1) 시장 문제 — 정부지원사업 공고 연 1만 건 이상 공개 · 기업 공고 탐색·서류 작성 평균 40시간 이상 소요",
-        "2) 고객 Pain — 공고 해석·배점 기준·양식 불일치로 탈락률 상승 · 컨설턴트 의존 비용 증가",
-        `3) ${company.name} 관점 — ${matching?.gaps[0] ?? "공고별 맞춤 사업계획서 작성 역량 보완 필요"}`,
-        "4) 개발·도입 필요성 — AI Agent Skill 파이프라인으로 공고 분석→초안→예산→검증 자동화 추진",
-      ].join("\n"),
-    "2. 실현 가능성 Solution_창업 아이템의 개발 계획": ({ company }) =>
-      [
-        `■ 핵심 기술: Gemini 기반 공고 구조화 + Cursor Agent Skill(business-plan-writer) 오케스트레이션`,
-        `■ 보유 IP: ${company.patents.join(" · ")}`,
-        "■ 개발 일정: 2026 Q3 기업마당 API 연동 · Q4 다단계 ai_jobs 파이프라인 · 2027 상용 SaaS 확장",
-        "■ 성과지표: 매칭 정확도 90% · 초안 생성 시간 80% 단축 · 관리자 검수 SLA 48h",
-        "■ 경쟁 대비: 단순 LLM 초안 대비 공고 배점·양식·규정 준수 검증까지 통합",
-      ].join("\n"),
+    "1. 문제 인식 Problem_창업 아이템의 필요성": (ctx) =>
+      buildProblemSectionContent(ctx),
+    "2. 실현 가능성 Solution_창업 아이템의 개발 계획": (ctx) =>
+      buildSolutionSectionContent(ctx),
     "사업비 집행 계획": (ctx) => buildBudgetSectionContent(ctx),
     "3. 성장전략 Scale-up_사업화 추진 전략": ({ company, matching }) =>
       [

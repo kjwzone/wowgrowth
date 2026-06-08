@@ -25,6 +25,11 @@ import {
   virtualTeamCompositionSample,
   type TeamTable,
 } from "@/lib/team-composition-model";
+import {
+  FORM_PLACEHOLDER,
+  hasFormBlocks,
+  parseFormBlocks,
+} from "@/lib/business-plan-form-blocks";
 
 const escapeHtml = (text: string): string =>
   text
@@ -274,6 +279,59 @@ const renderTeamComposition = (content: string): string => {
   </div>`;
 };
 
+const highlightPlaceholder = (text: string): string => {
+  const escaped = escapeHtml(text);
+  return escaped.split(escapeHtml(FORM_PLACEHOLDER)).join(
+    `<span class="form-todo">${escapeHtml(FORM_PLACEHOLDER)}</span>`,
+  );
+};
+
+const renderFormBlocks = (content: string): string => {
+  const blocks = parseFormBlocks(content);
+  if (blocks.length === 0) return "";
+
+  const blockHtml = blocks
+    .map((block) => {
+      const itemsHtml = block.items
+        .map((item) => {
+          if (item.kind === "table") {
+            const columns = item.table.columns;
+            const head = `<thead><tr>${columns
+              .map((column) => `<th>${highlightPlaceholder(column)}</th>`)
+              .join("")}</tr></thead>`;
+            const body = item.table.rows
+              .map(
+                (row) =>
+                  `<tr>${columns
+                    .map((_, index) => `<td>${highlightPlaceholder(row[index] ?? "")}</td>`)
+                    .join("")}</tr>`,
+              )
+              .join("");
+            return `<table class="form-table">${head}<tbody>${body}</tbody></table>`;
+          }
+          if (item.kind === "bullet") {
+            const numbered = /^\d+[).]/.test(item.text);
+            const cls =
+              item.level === 2
+                ? "form-bullet form-bullet-sub"
+                : numbered
+                  ? "form-bullet form-bullet-num"
+                  : "form-bullet";
+            return `<p class="${cls}">${highlightPlaceholder(item.text)}</p>`;
+          }
+          return `<p class="form-text">${highlightPlaceholder(item.text)}</p>`;
+        })
+        .join("");
+      const heading = block.title
+        ? `<h4 class="form-heading">${escapeHtml(block.title)}</h4>`
+        : "";
+      return `<div class="form-block">${heading}${itemsHtml}</div>`;
+    })
+    .join("");
+
+  return `<div class="form-blocks">${blockHtml}</div>`;
+};
+
 const renderDeepOutline = (content: string): string => {
   const blocks = parseDeepBlocks(content);
   if (blocks.length === 0) return "";
@@ -301,6 +359,12 @@ const renderBullets = (content: string): string => {
 
 const renderSectionVisualHtml = (title: string, content: string): string => {
   const deep = renderDeepOutline(content);
+  if (
+    (title.includes("문제 인식") || title.includes("실현 가능성")) &&
+    hasFormBlocks(content)
+  ) {
+    return `${renderFormBlocks(content)}${deep}`;
+  }
   if (title === "일반현황") {
     return `${renderKeyValueTable(content) || renderBullets(content)}${deep}`;
   }
@@ -404,6 +468,19 @@ const BASE_STYLES = `
   .team-table { width: 100%; border-collapse: collapse; font-size: .8125rem; }
   .team-table th, .team-table td { border: 1px solid #e2e8f0; padding: .5rem .625rem; text-align: left; vertical-align: top; }
   .team-table th { background: #f1f5f9; font-weight: 600; }
+  .form-blocks { display: flex; flex-direction: column; gap: 1.5rem; }
+  .form-heading { margin: 0 0 .625rem; font-size: .9375rem; color: #0040e0; }
+  .form-text { margin: .25rem 0; font-size: .875rem; color: #475569; }
+  .form-bullet { margin: .25rem 0; padding-left: 1rem; font-size: .875rem; color: #475569; position: relative; }
+  .form-bullet::before { content: "·"; position: absolute; left: .25rem; color: #0040e0; }
+  .form-bullet-num { padding-left: .25rem; }
+  .form-bullet-num::before { content: ""; }
+  .form-bullet-sub { padding-left: 2rem; }
+  .form-bullet-sub::before { content: "○"; left: 1.1rem; color: #94a3b8; font-size: .75rem; }
+  .form-table { width: 100%; border-collapse: collapse; font-size: .8125rem; margin: .5rem 0; }
+  .form-table th, .form-table td { border: 1px solid #e2e8f0; padding: .5rem .5rem; text-align: left; vertical-align: top; }
+  .form-table th { background: #f1f5f9; font-weight: 600; }
+  .form-todo { background: #fffbeb; color: #b45309; border-radius: 4px; padding: 0 .25rem; }
   .bullet-list { padding-left: 1.25rem; font-size: .875rem; }
   .bullet-list li { margin-bottom: .375rem; }
   .deep-outline { margin-top: 1rem; display: flex; flex-direction: column; gap: .875rem; }
