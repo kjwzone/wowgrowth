@@ -15,6 +15,8 @@ describe("company-diagnosis", () => {
     expect(report.overallGrade).toBe("B");
     expect(report.sectionGrades).toHaveLength(4);
     expect(report.sectionGrades[0]?.section).toBe("안정성");
+    // 부문 진단등급이 입력 재무비율 기반으로 산출됨
+    expect(report.sectionGrades[0]?.note).toContain("부채비율");
     expect(COMMENTARY_SECTIONS).toHaveLength(6);
     expect(report.commentary.overview).toContain("82");
     expect(report.keyRatios.length).toBeGreaterThan(0);

@@ -3,6 +3,7 @@ import {
   computeFunding,
   computeKeyRatios,
   computePerShareValueWon,
+  computeSectionScores,
   hasFinancialData,
 } from "@/lib/company-financials";
 
@@ -245,7 +246,12 @@ export const buildCompanyDiagnosisReport = (
       topMatches[0],
       useFinancials,
     ),
-    sectionGrades: buildSectionGrades(company, overallScore, topMatches[0]?.score),
+    sectionGrades: useFinancials
+      ? computeSectionScores(company.financials!, overallScore).map((item) => ({
+          ...item,
+          grade: scoreToGrade(item.score),
+        }))
+      : buildSectionGrades(company, overallScore, topMatches[0]?.score),
     keyRatios,
     ratioYears,
     funding,

@@ -173,6 +173,130 @@ export const computeFunding = (
   };
 };
 
+export type SectionName = "안정성" | "수익성" | "활동성" | "성장성";
+
+export type SectionScore = {
+  section: SectionName;
+  score: number;
+  note: string;
+};
+
+const fmtPct = (value: number | null): string =>
+  value == null ? "N/A" : `${value}%`;
+
+const band = (
+  value: number,
+  thresholds: Array<[number, number]>,
+  floor: number,
+): number => {
+  for (const [threshold, score] of thresholds) {
+    if (value >= threshold) return score;
+  }
+  return floor;
+};
+
+const average = (values: number[]): number | null =>
+  values.length === 0
+    ? null
+    : Math.round(values.reduce((sum, v) => sum + v, 0) / values.length);
+
+/** 입력 재무제표로 4대 부문(안정성·수익성·활동성·성장성) 점수·코멘트 산출 */
+export const computeSectionScores = (
+  financials: CompanyFinancials,
+  fallbackScore: number,
+): SectionScore[] => {
+  const years = sortedYears(financials);
+  const latest = years[years.length - 1];
+  const ratios = computeKeyRatios(financials);
+  const lastYear = ratios.years[ratios.years.length - 1] ?? "";
+  const get = (label: string): number | null =>
+    ratios.rows.find((row) => row.label === label)?.values[lastYear] ?? null;
+
+  const debt = get("부채비율(%)");
+  const current = get("유동비율(%)");
+  const roe = get("자기자본순이익률(ROE)");
+  const opMargin = get("매출액영업이익율(%)");
+  const revenueGrowth = get("매출액증가율(%)");
+  const assetGrowth = get("총자산증가율(%)");
+
+  const turnover =
+    latest && latest.totalAssets > 0
+      ? Math.round((latest.revenue / latest.totalAssets) * 100) / 100
+      : null;
+  const netMargin =
+    latest && latest.revenue > 0
+      ? Math.round((latest.netIncome / latest.revenue) * 1000) / 10
+      : null;
+
+  const withFallback = (value: number | null): number => value ?? fallbackScore;
+  const clamp = (value: number): number => Math.min(95, Math.max(45, value));
+
+  const stability = withFallback(
+    average(
+      [
+        debt == null
+          ? null
+          : band(-debt, [[-100, 90], [-200, 80], [-300, 70], [-400, 60]], 50),
+        current == null
+          ? null
+          : band(current, [[200, 90], [150, 80], [100, 70], [80, 60]], 50),
+      ].filter((v): v is number => v != null),
+    ),
+  );
+  const profitability = withFallback(
+    average(
+      [
+        roe == null ? null : band(roe, [[15, 90], [10, 80], [5, 70], [0.1, 60]], 50),
+        opMargin == null
+          ? null
+          : band(opMargin, [[15, 90], [10, 80], [5, 70], [0.1, 60]], 50),
+      ].filter((v): v is number => v != null),
+    ),
+  );
+  const activity = withFallback(
+    average(
+      [
+        turnover == null
+          ? null
+          : band(turnover, [[1, 90], [0.7, 80], [0.5, 70], [0.3, 60]], 50),
+        netMargin == null
+          ? null
+          : band(netMargin, [[15, 90], [10, 80], [5, 70], [0.1, 60]], 50),
+      ].filter((v): v is number => v != null),
+    ),
+  );
+  const growth = withFallback(
+    average(
+      [revenueGrowth, assetGrowth]
+        .filter((v): v is number => v != null)
+        .map((v) => band(v, [[20, 90], [10, 80], [5, 70], [0.1, 60]], 50)),
+    ),
+  );
+
+  return [
+    {
+      section: "안정성",
+      score: clamp(stability),
+      note: `부채비율 ${fmtPct(debt)} · 유동비율 ${fmtPct(current)}`,
+    },
+    {
+      section: "수익성",
+      score: clamp(profitability),
+      note: `ROE ${fmtPct(roe)} · 영업이익율 ${fmtPct(opMargin)}`,
+    },
+    {
+      section: "활동성",
+      score: clamp(activity),
+      note: `총자산회전율 ${turnover == null ? "N/A" : `${turnover}회`} · 매출순이익율 ${fmtPct(netMargin)}`,
+    },
+    {
+      section: "성장성",
+      score: clamp(growth),
+      note: `매출증가율 ${fmtPct(revenueGrowth)} · 자산증가율 ${fmtPct(assetGrowth)}`,
+    },
+  ];
+};
+
 export const createEmptyFinancialYear = (year: string): FinancialYear => ({
   year,
   revenue: 0,

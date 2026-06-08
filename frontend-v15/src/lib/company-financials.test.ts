@@ -3,6 +3,7 @@ import {
   computeFunding,
   computeKeyRatios,
   computePerShareValueWon,
+  computeSectionScores,
   hasFinancialData,
 } from "@/lib/company-financials";
 import type { CompanyFinancials } from "@/types";
@@ -125,5 +126,48 @@ describe("company-financials", () => {
   it("marks EBITDA coverage as N/A when interest expense is missing", () => {
     const funding = computeFunding({ ...financials, interestExpense: 0 });
     expect(funding.ebitdaInterest).toContain("N/A");
+  });
+
+  it("derives section scores and notes from financial ratios", () => {
+    const sections = computeSectionScores(financials, 82);
+    expect(sections.map((s) => s.section)).toEqual([
+      "안정성",
+      "수익성",
+      "활동성",
+      "성장성",
+    ]);
+
+    const stability = sections.find((s) => s.section === "안정성")!;
+    // 부채비율 157.1 → 80, 유동비율 285.7 → 90 → 평균 85
+    expect(stability.score).toBe(85);
+    expect(stability.note).toContain("부채비율 157.1%");
+
+    const growth = sections.find((s) => s.section === "성장성")!;
+    // 매출/자산 증가율 모두 20% → 90
+    expect(growth.score).toBe(90);
+  });
+
+  it("uses fallback score for sections without computable ratios", () => {
+    const sections = computeSectionScores(
+      {
+        shareCount: 0,
+        years: [
+          {
+            year: "2025",
+            revenue: 0,
+            operatingProfit: 0,
+            netIncome: 0,
+            totalAssets: 0,
+            currentAssets: 0,
+            currentLiabilities: 0,
+            totalLiabilities: 0,
+            totalEquity: 0,
+          },
+        ],
+      },
+      70,
+    );
+    // 모든 분모 0 → 계산 불가 → fallback 70 (clamp 45~95)
+    expect(sections.every((s) => s.score === 70)).toBe(true);
   });
 });
