@@ -5,7 +5,7 @@ import {
   dashboardInsights,
   dashboardStats,
 } from "@/data/adminReview";
-import { matchingResults } from "@/data/matching";
+import { buildMatchingResults, buildMatchingSummary } from "@/lib/matching-score";
 import { getProgramById, programs } from "@/data/programs";
 import {
   fetchBizinfoProgramById,
@@ -127,10 +127,43 @@ export const companyApi = {
   },
 };
 
+export type MatchingListResult = {
+  items: MatchingResult[];
+  source: ProgramListResult["source"];
+  message?: string;
+  summary: string;
+  programsScanned: number;
+};
+
+const MATCHING_BIZINFO_PAGE_SIZE = 50;
+
 export const matchingApi = {
-  list: async (): Promise<MatchingResult[]> => {
-    await delay(200);
-    return matchingResults;
+  list: async (): Promise<MatchingListResult> => {
+    const company = await companyApi.get();
+    const remote = await fetchBizinfoProgramsFromApi({
+      pageSize: MATCHING_BIZINFO_PAGE_SIZE,
+    });
+
+    if (remote.ok) {
+      bizinfoProgramCache = remote.items;
+      const items = buildMatchingResults(company, remote.items, 3);
+      return {
+        items,
+        source: "bizinfo",
+        summary: buildMatchingSummary(items),
+        programsScanned: remote.items.length,
+      };
+    }
+
+    const fallback = await programApi.list();
+    const items = buildMatchingResults(company, fallback.items, 3);
+    return {
+      items,
+      source: fallback.source,
+      message: `기업마당 실시간 연동 실패(${remote.message}). 임시 데모 공고로 매칭합니다.`,
+      summary: buildMatchingSummary(items),
+      programsScanned: fallback.items.length,
+    };
   },
 };
 
@@ -305,7 +338,7 @@ export const diagnosisReportApi = {
   get: async () => {
     await delay(200);
     const company = await companyApi.get();
-    const matching = await matchingApi.list();
+    const matching = (await matchingApi.list()).items;
     return buildCompanyDiagnosisReport(company, matching);
   },
 };

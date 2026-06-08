@@ -5,7 +5,7 @@ import {
   serializeBudgetExecutionPlan,
   buildBudgetExecutionPlanFromProgram,
 } from "@/lib/budget-execution-plan-model";
-import { matchingResults } from "@/data/matching";
+import { toMatchingResult } from "@/lib/matching-score";
 import { getProgramById } from "@/data/programs";
 import {
   getSectionTitlesForSkill,
@@ -41,8 +41,11 @@ const resolveProgram = (programId: string): SupportProgram | undefined => {
   return getProgramById(programId);
 };
 
-const buildMatchingContext = (programId: string) =>
-  matchingResults.find((m) => m.programId === programId);
+const buildMatchingContext = (programId: string) => {
+  const program = resolveProgram(programId);
+  if (!program) return undefined;
+  return toMatchingResult(companyProfile, program);
+};
 
 const buildBudgetSectionContent = (ctx: GenerationContext): string => {
   if (!ctx.program) {

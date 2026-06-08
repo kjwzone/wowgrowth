@@ -182,7 +182,7 @@ export const fetchBizinfoProgramById = async (
   id: string,
 ): Promise<SupportProgram | null> => {
   try {
-    const list = await fetchBizinfoProgramsFromApi({ pageSize: 20 });
+    const list = await fetchBizinfoProgramsFromApi({ pageSize: 50 });
     return list.ok ? list.items.find((item) => item.id === id) ?? null : null;
   } catch {
     return null;

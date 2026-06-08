@@ -47,6 +47,7 @@ export type CompanyProfile = {
   patents: string[];
   diagnosisStatus: "완료" | "진행중" | "미시작";
   diagnosisScore: number;
+  region?: string;
 };
 
 export type MatchingResult = {
@@ -58,6 +59,10 @@ export type MatchingResult = {
   reasons: string[];
   gaps: string[];
   suggestions: string[];
+  deadline?: string;
+  daysLeft?: number;
+  programStatus?: SupportProgram["status"];
+  source?: ProgramDataSource;
 };
 
 export type BusinessPlanSection = {

@@ -1,5 +1,5 @@
 import { companyProfile } from "@/data/company";
-import { matchingResults } from "@/data/matching";
+import { toMatchingResult } from "@/lib/matching-score";
 import type { CompanyProfile, MatchingResult, SupportProgram } from "@/types";
 
 export type AiGenerationContext = {
@@ -18,7 +18,7 @@ export const buildAiContext = (
   program: SupportProgram,
   company: CompanyProfile = companyProfile,
 ): AiGenerationContext => {
-  const matching = matchingResults.find((item) => item.programId === program.id);
+  const matching = toMatchingResult(company, program);
   return {
     company,
     program,

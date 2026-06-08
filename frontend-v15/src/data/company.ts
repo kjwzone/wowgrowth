@@ -13,4 +13,5 @@ export const companyProfile: CompanyProfile = {
   patents: ["AI 기반 공고 매칭 방법 (출원)", "사업계획서 자동생성 시스템 (등록)"],
   diagnosisStatus: "완료",
   diagnosisScore: 82,
+  region: "경기",
 };
