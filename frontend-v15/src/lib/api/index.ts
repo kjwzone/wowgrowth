@@ -1,6 +1,5 @@
 import { businessPlanDraft } from "@/data/businessPlan";
 import { companyProfile } from "@/data/company";
-import { dashboardInsights, dashboardStats } from "@/data/dashboard";
 import { buildMatchingResults, buildMatchingSummary } from "@/lib/matching-score";
 import { getProgramById, programs } from "@/data/programs";
 import {
@@ -16,6 +15,7 @@ import {
 import { buildAiContext } from "@/lib/business-plan-ai-context";
 import { fetchAdminDashboardSummary } from "@/lib/admin-dashboard";
 import { buildCompanyDiagnosisReport } from "@/lib/company-diagnosis";
+import { buildDashboardSnapshot, type DashboardSnapshot } from "@/lib/dashboard-data";
 import { businessPlanAiClient, isAiFallbackError } from "@/lib/business-plan-ai-client";
 import {
   completePipeline,
@@ -319,15 +319,38 @@ export const businessPlanApi = {
 };
 
 export const dashboardApi = {
-  getStats: async (): Promise<DashboardStats> => {
-    await delay(150);
-    return dashboardStats;
+  getSnapshot: async (): Promise<DashboardSnapshot> => {
+    const [company, matchingResult, plan, programResult] = await Promise.all([
+      companyApi.get(),
+      matchingApi.list(),
+      businessPlanApi.get(),
+      programApi.list(),
+    ]);
+
+    return buildDashboardSnapshot({
+      company,
+      matching: matchingResult.items,
+      plan,
+      programs: programResult.items,
+      sources: {
+        matching: matchingResult.source,
+        programs: programResult.source,
+      },
+    });
   },
+
+  getStats: async (): Promise<DashboardStats> => {
+    const snapshot = await dashboardApi.getSnapshot();
+    return snapshot.stats;
+  },
+
   getInsights: async (): Promise<DashboardInsight[]> => {
-    await delay(150);
-    return dashboardInsights;
+    const snapshot = await dashboardApi.getSnapshot();
+    return snapshot.insights;
   },
 };
+
+export type { DashboardSnapshot };
 
 export const diagnosisReportApi = {
   get: async () => {
