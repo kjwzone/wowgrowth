@@ -34,6 +34,22 @@ export type SupportProgram = {
   externalUrl?: string;
 };
 
+export type PatentKind = "특허" | "실용신안" | "디자인";
+export type PatentStatus = "등록완료" | "출원중";
+
+export type PatentEntry = {
+  id: string;
+  kind: PatentKind;
+  applicationNumber: string;
+  country: string;
+  title: string;
+  filingDate: string;
+  holder: string;
+  status: PatentStatus;
+};
+
+export type ResearchOrgType = "기업부설연구소" | "연구전담부서" | "없음";
+
 export type CompanyProfile = {
   id: string;
   name: string;
@@ -44,7 +60,10 @@ export type CompanyProfile = {
   product: string;
   stage: string;
   certifications: string[];
+  /** AI·매칭에서 사용하는 특허 라벨 목록 (patentEntries에서 파생) */
   patents: string[];
+  patentEntries?: PatentEntry[];
+  researchOrg?: ResearchOrgType;
   diagnosisStatus: "완료" | "진행중" | "미시작";
   diagnosisScore: number;
   region?: string;

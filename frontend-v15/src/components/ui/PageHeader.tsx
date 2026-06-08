@@ -26,11 +26,13 @@ export const SectionCard = ({
   description,
   children,
   className,
+  action,
 }: {
   title?: string;
   description?: string;
   children: ReactNode;
   className?: string;
+  action?: ReactNode;
 }) => (
   <section
     className={cn(
@@ -39,11 +41,14 @@ export const SectionCard = ({
     )}
   >
     {title ? (
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold text-primary">{title}</h2>
-        {description ? (
-          <p className="mt-1 text-sm text-on-surface-variant">{description}</p>
-        ) : null}
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-primary">{title}</h2>
+          {description ? (
+            <p className="mt-1 text-sm text-on-surface-variant">{description}</p>
+          ) : null}
+        </div>
+        {action}
       </div>
     ) : null}
     {children}

@@ -15,6 +15,11 @@ import {
 import { buildAiContext } from "@/lib/business-plan-ai-context";
 import { fetchAdminDashboardSummary } from "@/lib/admin-dashboard";
 import { buildCompanyDiagnosisReport } from "@/lib/company-diagnosis";
+import {
+  loadStoredProfile,
+  normalizeCompanyProfile,
+  persistProfile,
+} from "@/lib/company-profile-model";
 import { buildDashboardSnapshot, type DashboardSnapshot } from "@/lib/dashboard-data";
 import { businessPlanAiClient, isAiFallbackError } from "@/lib/business-plan-ai-client";
 import {
@@ -114,11 +119,13 @@ export const programApi = {
 export const companyApi = {
   get: async (): Promise<CompanyProfile> => {
     await delay(150);
-    return companyProfile;
+    return loadStoredProfile() ?? normalizeCompanyProfile(companyProfile);
   },
   save: async (profile: CompanyProfile): Promise<CompanyProfile> => {
     await delay(300);
-    return profile;
+    const normalized = normalizeCompanyProfile(profile);
+    persistProfile(normalized);
+    return normalized;
   },
 };
 

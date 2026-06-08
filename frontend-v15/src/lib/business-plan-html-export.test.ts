@@ -5,12 +5,17 @@ import { exportBusinessPlanHtml } from "@/lib/business-plan-html-export";
 import { selectReferenceImages } from "@/lib/business-plan-reference-images";
 
 describe("business-plan-html-export", () => {
-  it("exports TAM/SAM/SOM concentric diagram in Korean for growth strategy", () => {
+  it("exports TAM/SAM/SOM concentric diagram from 목표 시장 table for growth strategy", () => {
     const draft = createEmptyDraft("prog-001");
     const growthSection = draft.sections.find((s) => s.title.includes("성장전략"));
     if (growthSection) {
-      growthSection.content =
-        "■ TAM/SAM/SOM: 국내 중소·벤처 약 400만社 / 정부지원 수요 50만社 / 1차 목표 5,000社\n- GTM: 온라인·파트너·세일즈";
+      growthSection.content = [
+        "■ 목표 시장 및 고객 분석",
+        "| 시장 구분 | 규모(시장 금액) | 산출 근거 |",
+        "| TAM (전체시장) | 약 6조원 | 전체 시장 규모 |",
+        "| SAM (유효시장) | 약 8,400억원 | 도달 가능 세그먼트 |",
+        "| SOM (수익시장) | 약 2,400억원 | Bottom-up 산출 |",
+      ].join("\n");
     }
     const document = mergeDraftToDocument(draft);
     const html = exportBusinessPlanHtml(document, []);
@@ -20,6 +25,7 @@ describe("business-plan-html-export", () => {
     expect(html).toContain("유효 가용 시장");
     expect(html).toContain("수익 가능 시장");
     expect(html).toContain('viewBox="0 0 280 160"');
+    expect(html).toContain("약 6조원");
   });
   it("exports budget execution plan tables for 사업비 section", () => {
     const draft = createEmptyDraft("prog-001");
