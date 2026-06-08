@@ -215,11 +215,20 @@ export const buildCompanyDiagnosisReport = (
   const computedPerShare = useFinancials
     ? computePerShareValueWon(company.financials!)
     : null;
-  const perShare =
-    computedPerShare ?? Math.round(24_194.8 * (overallScore / 82));
-  const perShareNote = useFinancials
-    ? "상증법 보충적 평가 (순손익가치 3 : 순자산가치 2)"
-    : "상증법 보충적 평가 자체 추정치 (재무제표 입력 시 산출)";
+
+  let perShareValue: string;
+  let perShareNote: string;
+  if (computedPerShare != null) {
+    perShareValue = `${computedPerShare.toLocaleString("ko-KR")}원/주`;
+    perShareNote = "상증법 보충적 평가 (순손익가치 3 : 순자산가치 2)";
+  } else if (useFinancials) {
+    perShareValue = "발행주식수 입력 필요";
+    perShareNote = "상증법 평가를 위해 발행주식수·자본총계 입력이 필요합니다";
+  } else {
+    const demoPerShare = Math.round(24_194.8 * (overallScore / 82));
+    perShareValue = `${demoPerShare.toLocaleString("ko-KR")}원/주`;
+    perShareNote = "상증법 보충적 평가 자체 추정치 (재무제표 입력 시 산출)";
+  }
 
   return {
     companyName: company.name,
@@ -241,7 +250,7 @@ export const buildCompanyDiagnosisReport = (
     ratioYears,
     funding,
     tax: {
-      perShareValue: `${perShare.toLocaleString("ko-KR")}원/주`,
+      perShareValue,
       grade: scoreToGrade(overallScore),
       note: perShareNote,
     },

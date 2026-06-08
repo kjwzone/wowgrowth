@@ -34,5 +34,17 @@ describe("company-diagnosis", () => {
     );
     expect(report.ratioYears).toEqual(["2021", "2022", "2023"]);
     expect(report.tax.note).toContain("재무제표 입력 시 산출");
+    expect(report.tax.perShareValue).toContain("원/주");
+  });
+
+  it("guides input instead of demo value when share count is missing", () => {
+    const report = buildCompanyDiagnosisReport(
+      {
+        ...companyProfile,
+        financials: { ...companyProfile.financials!, shareCount: 0 },
+      },
+      matchingResults,
+    );
+    expect(report.tax.perShareValue).toBe("발행주식수 입력 필요");
   });
 });
