@@ -18,10 +18,12 @@ import { buildTamSamSomTiers } from "@/lib/tam-sam-som-model";
 import { parseDeepBlocks } from "@/lib/business-plan-outline";
 import {
   hasTeamComposition,
-  isPlaceholderRow,
   isPlaceholderValue,
   parseTeamCompositionPlan,
+  tableIsEmpty,
   TEAM_COMPOSITION_COLUMNS,
+  virtualTeamCompositionSample,
+  type TeamTable,
 } from "@/lib/team-composition-model";
 
 const escapeHtml = (text: string): string =>
@@ -194,87 +196,81 @@ const renderTamSamSomDiagram = (content: string): string => {
   </div>`;
 };
 
-const teamPlaceholderHtml = (label: string): string =>
-  `<div class="team-placeholder">${escapeHtml(label)} — 정보 미입력 (작성 공간 확보)</div>`;
+const virtualBadgeHtml = `<span class="team-virtual-badge">예시 (가상) · 실제 정보로 교체 필요</span>`;
 
 const renderTeamComposition = (content: string): string => {
   const plan = parseTeamCompositionPlan(content);
+  const sample = virtualTeamCompositionSample();
 
-  const orgNodes = plan.orgChart.filter((node) => !isPlaceholderValue(node.label));
-  const orgHtml = orgNodes.length
-    ? (() => {
-        const [head, ...rest] = orgNodes;
-        const headHtml = `<div class="org-head"><strong>${escapeHtml(head!.label)}</strong>${head!.detail ? `<span>${escapeHtml(head!.detail)}</span>` : ""}</div>`;
-        const restHtml = rest.length
-          ? `<div class="org-grid">${rest
-              .map(
-                (node) =>
-                  `<div class="org-node"><strong>${escapeHtml(node.label)}</strong>${node.detail ? `<span>${escapeHtml(node.detail)}</span>` : ""}</div>`,
-              )
-              .join("")}</div>`
-          : "";
-        return `<div class="org-chart">${headHtml}${restHtml}</div>`;
-      })()
-    : teamPlaceholderHtml("조직도");
+  const orgVirtual = plan.orgChart.every((node) =>
+    isPlaceholderValue(node.label),
+  );
+  const orgData = orgVirtual ? sample.orgChart : plan.orgChart;
+  const orgNodes = orgData.filter((node) => !isPlaceholderValue(node.label));
+  const [head, ...rest] = orgNodes;
+  const orgHtml = head
+    ? `<div class="org-chart">
+        <div class="org-head"><strong>${escapeHtml(head.label)}</strong>${head.detail ? `<span>${escapeHtml(head.detail)}</span>` : ""}</div>
+        ${
+          rest.length
+            ? `<div class="org-grid">${rest
+                .map(
+                  (node) =>
+                    `<div class="org-node"><strong>${escapeHtml(node.label)}</strong>${node.detail ? `<span>${escapeHtml(node.detail)}</span>` : ""}</div>`,
+                )
+                .join("")}</div>`
+            : ""
+        }
+      </div>`
+    : "";
 
-  const repHtml =
-    plan.representative.length > 0 &&
-    !plan.representative.every((row) => isPlaceholderValue(row.value))
-      ? `<table class="kv-table"><tbody>${plan.representative
-          .map(
-            (row) =>
-              `<tr><th>${escapeHtml(row.label)}</th><td>${escapeHtml(row.value || "(작성 필요)")}</td></tr>`,
-          )
-          .join("")}</tbody></table>`
-      : teamPlaceholderHtml("대표자 역량");
+  const repVirtual = plan.representative.every((row) =>
+    isPlaceholderValue(row.value),
+  );
+  const repData = repVirtual ? sample.representative : plan.representative;
+  const repHtml = `<table class="kv-table"><tbody>${repData
+    .map(
+      (row) =>
+        `<tr><th>${escapeHtml(row.label)}</th><td>${escapeHtml(row.value || "(작성 필요)")}</td></tr>`,
+    )
+    .join("")}</tbody></table>`;
 
-  const gridTable = (
-    columns: readonly string[],
-    rows: string[][],
-    label: string,
-  ): string => {
-    if (rows.length === 0 || rows.every((row) => isPlaceholderRow(row))) {
-      return teamPlaceholderHtml(label);
-    }
+  const gridTable = (table: TeamTable, fallback: readonly string[]): string => {
+    const columns = table.columns.length ? table.columns : [...fallback];
     const head = `<thead><tr>${columns
       .map((column) => `<th>${escapeHtml(column)}</th>`)
       .join("")}</tr></thead>`;
-    const body = rows
+    const body = table.rows
       .map(
         (row) =>
           `<tr>${columns
-            .map(
-              (_, index) =>
-                `<td>${escapeHtml(row[index] ?? "(작성 필요)")}</td>`,
-            )
+            .map((_, index) => `<td>${escapeHtml(row[index] ?? "(작성 필요)")}</td>`)
             .join("")}</tr>`,
       )
       .join("");
     return `<table class="team-table">${head}<tbody>${body}</tbody></table>`;
   };
 
+  const teamVirtual = tableIsEmpty(plan.team);
   const teamHtml = gridTable(
+    teamVirtual ? sample.team : plan.team,
     TEAM_COMPOSITION_COLUMNS.team,
-    plan.teamMembers.map((row) => [
-      row.role,
-      row.duty,
-      row.capability,
-      row.status,
-    ]),
-    "팀 구성(안)",
   );
 
+  const partnerVirtual = tableIsEmpty(plan.partners);
   const partnerHtml = gridTable(
+    partnerVirtual ? sample.partners : plan.partners,
     TEAM_COMPOSITION_COLUMNS.partner,
-    plan.partners.map((row) => [row.name, row.capability, row.plan, row.timing]),
-    "협력 기관 현황 및 협업 방안",
   );
+
+  const blockHtml = (title: string, virtual: boolean, body: string) =>
+    `<div class="team-block"><h4>${escapeHtml(title)}${virtual ? virtualBadgeHtml : ""}</h4>${body}</div>`;
 
   return `<div class="team-composition">
-    <div class="team-block"><h4>조직도</h4>${orgHtml}</div>
-    <div class="team-block"><h4>대표자 역량</h4>${repHtml}</div>
-    <div class="team-block"><h4>팀 구성(안)</h4>${teamHtml}</div>
-    <div class="team-block"><h4>협력 기관 현황 및 협업 방안</h4>${partnerHtml}</div>
+    ${blockHtml("조직도", orgVirtual, orgHtml)}
+    ${blockHtml("대표자 역량", repVirtual, repHtml)}
+    ${blockHtml("팀 구성(안)", teamVirtual, teamHtml)}
+    ${blockHtml("협력 기관 현황 및 협업 방안", partnerVirtual, partnerHtml)}
   </div>`;
 };
 
@@ -395,8 +391,8 @@ const BASE_STYLES = `
   .tam-value { margin: .375rem 0 0; font-size: .75rem; color: #64748b; }
   @media (max-width: 640px) { .tam-diagram-grid { grid-template-columns: 1fr; } }
   .team-composition { display: flex; flex-direction: column; gap: 1.5rem; }
-  .team-block h4 { margin: 0 0 .625rem; font-size: .9375rem; color: #0040e0; }
-  .team-placeholder { border: 1px dashed #cbd5e1; border-radius: 8px; padding: 1.25rem; text-align: center; color: #94a3b8; font-size: .8125rem; background: #f8fafc; }
+  .team-block h4 { margin: 0 0 .625rem; font-size: .9375rem; color: #0040e0; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+  .team-virtual-badge { border: 1px solid #fcd34d; background: #fffbeb; color: #b45309; border-radius: 999px; padding: .125rem .5rem; font-size: .6875rem; font-weight: 500; }
   .org-chart { border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem; background: #f8fafc; text-align: center; }
   .org-head { display: inline-block; border: 2px solid #0040e0; border-radius: 12px; padding: .625rem 1.25rem; background: #eef2ff; }
   .org-head strong { display: block; color: #0040e0; font-size: .875rem; }

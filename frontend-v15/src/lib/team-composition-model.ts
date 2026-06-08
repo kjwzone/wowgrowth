@@ -2,24 +2,13 @@ import type { CompanyProfile, SupportProgram } from "@/types";
 
 export type OrgChartNode = { label: string; detail: string };
 export type RepresentativeRow = { label: string; value: string };
-export type TeamMemberRow = {
-  role: string;
-  duty: string;
-  capability: string;
-  status: string;
-};
-export type PartnerRow = {
-  name: string;
-  capability: string;
-  plan: string;
-  timing: string;
-};
+export type TeamTable = { columns: string[]; rows: string[][] };
 
 export type TeamCompositionPlan = {
   orgChart: OrgChartNode[];
   representative: RepresentativeRow[];
-  teamMembers: TeamMemberRow[];
-  partners: PartnerRow[];
+  team: TeamTable;
+  partners: TeamTable;
 };
 
 /** 정보 미입력 시 작성 공간 확보용 플레이스홀더 */
@@ -30,29 +19,44 @@ const REP_HEADER = "■ 대표자 역량";
 const TEAM_HEADER = "■ 팀 구성(안)";
 const PARTNER_HEADER = "■ 협력 기관 현황 및 협업 방안";
 
-const TEAM_TABLE_COLUMNS = ["직책", "담당 업무", "보유 역량", "구성 상태"] as const;
-const PARTNER_TABLE_COLUMNS = [
+const TEAM_DEFAULT_COLUMNS = ["직책", "담당 업무", "보유 역량", "구성 상태"];
+const PARTNER_DEFAULT_COLUMNS = [
   "파트너명",
   "보유 역량",
   "협업 방안",
   "협업 시기",
-] as const;
+];
 
 export const TEAM_COMPOSITION_COLUMNS = {
-  team: TEAM_TABLE_COLUMNS,
-  partner: PARTNER_TABLE_COLUMNS,
+  team: TEAM_DEFAULT_COLUMNS,
+  partner: PARTNER_DEFAULT_COLUMNS,
 } as const;
 
 const ORG_DELIMITER = "::";
 
 type TeamBlockKey = "org" | "rep" | "team" | "partner";
 
+const HEADER_KEYWORD_RULES: { key: TeamBlockKey; test: RegExp }[] = [
+  { key: "org", test: /조직도|조직\s*구성|조직\s*체계/ },
+  { key: "partner", test: /협력|협업|파트너/ },
+  { key: "rep", test: /대표자|대표\s*역량|경영진|대표\s*이력/ },
+  { key: "team", test: /팀\s*구성|팀구성|팀원|인력\s*구성|구성\(?안\)?/ },
+];
+
+/** 머리글 장식(#, ■, 숫자, *, 〈 〉 등) 제거 후 핵심 텍스트만 추출 */
+const stripHeadingDecoration = (line: string): string =>
+  line
+    .replace(/^[^가-힣A-Za-z]+/u, "")
+    .replace(/[\s*#:)\]】〉>]+$/u, "")
+    .trim();
+
 const matchTeamHeader = (line: string): TeamBlockKey | null => {
-  const text = line.replace(/^■\s*/, "").trim();
-  if (text.startsWith("조직도")) return "org";
-  if (text.startsWith("대표자")) return "rep";
-  if (text.startsWith("팀 구성") || text.startsWith("팀구성")) return "team";
-  if (text.includes("협력")) return "partner";
+  if (line.includes("|")) return null;
+  const text = stripHeadingDecoration(line);
+  if (!text || text.length > 40) return null;
+  for (const rule of HEADER_KEYWORD_RULES) {
+    if (rule.test.test(text)) return rule.key;
+  }
   return null;
 };
 
@@ -60,7 +64,7 @@ export const hasTeamComposition = (content: string): boolean =>
   content.split("\n").some((line) => matchTeamHeader(line.trim()) !== null);
 
 const stripOrgBullet = (line: string): string =>
-  line.replace(/^[·○▪◦\-*]\s*/, "").trim();
+  line.replace(/^[·○▪◦▶\-*]\s*/u, "").trim();
 
 const isSeparatorRow = (cells: string[]): boolean =>
   cells.length > 0 && cells.every((cell) => /^[-—\s:]*$/.test(cell));
@@ -76,6 +80,20 @@ const parsePipeRow = (line: string): string[] | null => {
   if (isSeparatorRow(cells)) return null;
   return cells;
 };
+
+const tableFromRows = (rows: string[][]): TeamTable => {
+  if (rows.length === 0) return { columns: [], rows: [] };
+  return { columns: rows[0]!, rows: rows.slice(1) };
+};
+
+export const isPlaceholderValue = (value: string): boolean =>
+  !value.trim() || value.trim() === TEAM_PLACEHOLDER;
+
+export const isPlaceholderRow = (values: string[]): boolean =>
+  values.every((value) => isPlaceholderValue(value));
+
+export const tableIsEmpty = (table: TeamTable): boolean =>
+  table.rows.length === 0 || table.rows.every((row) => isPlaceholderRow(row));
 
 export const serializeTeamCompositionPlan = (
   plan: TeamCompositionPlan,
@@ -93,45 +111,21 @@ export const serializeTeamCompositionPlan = (
   lines.push(REP_HEADER);
   const repRows = plan.representative.length
     ? plan.representative
-    : [
-        { label: "학력", value: TEAM_PLACEHOLDER },
-        { label: "주요 경력", value: TEAM_PLACEHOLDER },
-        { label: "주요 실적", value: TEAM_PLACEHOLDER },
-        { label: "주요 역량", value: TEAM_PLACEHOLDER },
-      ];
+    : [{ label: "구분", value: TEAM_PLACEHOLDER }];
   repRows.forEach((row) => lines.push(`| ${row.label} | ${row.value} |`));
 
-  lines.push(TEAM_HEADER);
-  lines.push(`| ${TEAM_TABLE_COLUMNS.join(" | ")} |`);
-  const teamRows = plan.teamMembers.length
-    ? plan.teamMembers
-    : [
-        {
-          role: TEAM_PLACEHOLDER,
-          duty: TEAM_PLACEHOLDER,
-          capability: TEAM_PLACEHOLDER,
-          status: TEAM_PLACEHOLDER,
-        },
-      ];
-  teamRows.forEach((row) =>
-    lines.push(`| ${row.role} | ${row.duty} | ${row.capability} | ${row.status} |`),
-  );
+  const pushTable = (header: string, table: TeamTable, fallback: string[]) => {
+    lines.push(header);
+    const columns = table.columns.length ? table.columns : fallback;
+    lines.push(`| ${columns.join(" | ")} |`);
+    const rows = table.rows.length
+      ? table.rows
+      : [columns.map(() => TEAM_PLACEHOLDER)];
+    rows.forEach((row) => lines.push(`| ${row.join(" | ")} |`));
+  };
 
-  lines.push(PARTNER_HEADER);
-  lines.push(`| ${PARTNER_TABLE_COLUMNS.join(" | ")} |`);
-  const partnerRows = plan.partners.length
-    ? plan.partners
-    : [
-        {
-          name: TEAM_PLACEHOLDER,
-          capability: TEAM_PLACEHOLDER,
-          plan: TEAM_PLACEHOLDER,
-          timing: TEAM_PLACEHOLDER,
-        },
-      ];
-  partnerRows.forEach((row) =>
-    lines.push(`| ${row.name} | ${row.capability} | ${row.plan} | ${row.timing} |`),
-  );
+  pushTable(TEAM_HEADER, plan.team, TEAM_DEFAULT_COLUMNS);
+  pushTable(PARTNER_HEADER, plan.partners, PARTNER_DEFAULT_COLUMNS);
 
   return lines.join("\n");
 };
@@ -139,16 +133,13 @@ export const serializeTeamCompositionPlan = (
 export const parseTeamCompositionPlan = (
   content: string,
 ): TeamCompositionPlan => {
-  const plan: TeamCompositionPlan = {
-    orgChart: [],
-    representative: [],
-    teamMembers: [],
-    partners: [],
-  };
+  const orgChart: OrgChartNode[] = [];
+  const representative: RepresentativeRow[] = [];
+  const repSpillover: string[][] = [];
+  const teamRows: string[][] = [];
+  const partnerRows: string[][] = [];
 
   let current: TeamBlockKey | null = null;
-  let teamHeaderSeen = false;
-  let partnerHeaderSeen = false;
 
   for (const raw of content.split("\n")) {
     const line = raw.trim();
@@ -162,11 +153,19 @@ export const parseTeamCompositionPlan = (
     if (!current) continue;
 
     if (current === "org") {
+      const cells = parsePipeRow(line);
+      if (cells) {
+        orgChart.push({
+          label: cells[0] ?? "",
+          detail: cells.slice(1).join(" · ").trim(),
+        });
+        continue;
+      }
       const body = stripOrgBullet(line);
       if (!body) continue;
       const [label, ...rest] = body.split(ORG_DELIMITER);
-      plan.orgChart.push({
-        label: label?.trim() ?? body,
+      orgChart.push({
+        label: (label ?? body).trim(),
         detail: rest.join(ORG_DELIMITER).trim(),
       });
       continue;
@@ -176,43 +175,72 @@ export const parseTeamCompositionPlan = (
     if (!cells) continue;
 
     if (current === "rep") {
-      plan.representative.push({
-        label: cells[0] ?? "",
-        value: cells.slice(1).join(" / ").trim(),
-      });
+      if (cells.length === 2) {
+        representative.push({ label: cells[0] ?? "", value: cells[1] ?? "" });
+      } else {
+        // 대표자 역량 블록에 다열 표(팀 구성)가 섞인 경우 → 팀 표로 분리
+        repSpillover.push(cells);
+      }
     } else if (current === "team") {
-      const isHeaderRow =
-        !teamHeaderSeen && cells[0] === TEAM_TABLE_COLUMNS[0];
-      teamHeaderSeen = true;
-      if (isHeaderRow) continue;
-      plan.teamMembers.push({
-        role: cells[0] ?? "",
-        duty: cells[1] ?? "",
-        capability: cells[2] ?? "",
-        status: cells[3] ?? "",
-      });
+      teamRows.push(cells);
     } else if (current === "partner") {
-      const isHeaderRow =
-        !partnerHeaderSeen && cells[0] === PARTNER_TABLE_COLUMNS[0];
-      partnerHeaderSeen = true;
-      if (isHeaderRow) continue;
-      plan.partners.push({
-        name: cells[0] ?? "",
-        capability: cells[1] ?? "",
-        plan: cells[2] ?? "",
-        timing: cells[3] ?? "",
-      });
+      partnerRows.push(cells);
     }
   }
 
-  return plan;
+  const team =
+    teamRows.length > 0 ? tableFromRows(teamRows) : tableFromRows(repSpillover);
+
+  return {
+    orgChart,
+    representative,
+    team,
+    partners: tableFromRows(partnerRows),
+  };
 };
 
-export const isPlaceholderValue = (value: string): boolean =>
-  !value.trim() || value.trim() === TEAM_PLACEHOLDER;
-
-export const isPlaceholderRow = (values: string[]): boolean =>
-  values.every((value) => isPlaceholderValue(value));
+/** 정보 미입력 블록을 채우기 위한 가상(예시) 샘플 데이터 */
+export const virtualTeamCompositionSample = (): TeamCompositionPlan => ({
+  orgChart: [
+    { label: "대표이사 (CEO)", detail: "경영 총괄·전략·투자 유치" },
+    { label: "CTO", detail: "기술 개발 총괄·아키텍처" },
+    { label: "CPO", detail: "제품 기획·UX 총괄" },
+    { label: "COO", detail: "운영·사업화 총괄" },
+    { label: "AI 팀", detail: "모델 개발·MLOps" },
+    { label: "백엔드 팀", detail: "API·인프라·보안" },
+    { label: "디자인 팀", detail: "UX/UI·브랜딩" },
+    { label: "마케팅 팀", detail: "그로스·B2B 세일즈" },
+  ],
+  representative: [
+    { label: "학력", value: "○○대학교 컴퓨터공학 학사 (예시)" },
+    { label: "주요 경력", value: "前 ○○테크 AI 개발팀장 (8년) (예시)" },
+    {
+      label: "주요 실적",
+      value: "AI SaaS 2건 출시·누적 사용자 5만+ (예시)",
+    },
+    {
+      label: "주요 역량",
+      value: "AI/ML·사업 전략·정부지원사업 수행 (예시)",
+    },
+  ],
+  team: {
+    columns: TEAM_DEFAULT_COLUMNS,
+    rows: [
+      ["CTO", "AI 모델·아키텍처 설계", "ML 10년·딥러닝", "재직"],
+      ["백엔드 리드", "API·인프라·보안", "분산시스템 8년", "재직"],
+      ["프로덕트 매니저", "기획·로드맵 관리", "B2B SaaS 6년", "재직"],
+      ["ML 엔지니어", "모델 고도화·평가", "NLP·LLM 전문", "채용 예정"],
+    ],
+  },
+  partners: {
+    columns: PARTNER_DEFAULT_COLUMNS,
+    rows: [
+      ["○○대학교 산학협력단", "AI 연구 인프라", "공동 연구·실증", "2026 상반기"],
+      ["○○클라우드", "GPU·클라우드 인프라", "기술 지원·크레딧", "협약 기간"],
+      ["○○액셀러레이터", "투자·창업 네트워크", "멘토링·IR 연계", "2026 하반기"],
+    ],
+  },
+});
 
 export const buildTeamCompositionPlan = (
   company: Pick<
@@ -245,45 +273,26 @@ export const buildTeamCompositionPlan = (
         value: `${company.industry} · ${company.product}`,
       },
     ],
-    teamMembers: [
-      {
-        role: "AI 개발",
-        duty: "모델·Skill 파이프라인 개발",
-        capability: `AI 엔지니어 ${aiHeadcount}명`,
-        status: "재직",
-      },
-      {
-        role: "백엔드 개발",
-        duty: "API·인프라·보안",
-        capability: "Backend 엔지니어",
-        status: "재직",
-      },
-      {
-        role: "사업화 PM",
-        duty: "공고 대응·사업화 전략",
-        capability: "정부지원 도메인 PM",
-        status: "[채용 예정]",
-      },
-      {
-        role: "ML Engineer",
-        duty: "모델 고도화·평가",
-        capability: "ML 전문 인력",
-        status: "[채용 예정]",
-      },
-    ],
-    partners: [
-      {
-        name: program?.agency ?? TEAM_PLACEHOLDER,
-        capability: "공고 주관·멘토링·심사",
-        plan: "설명회·멘토링·중간점검 대응",
-        timing: program?.period ?? TEAM_PLACEHOLDER,
-      },
-      {
-        name: TEAM_PLACEHOLDER,
-        capability: TEAM_PLACEHOLDER,
-        plan: TEAM_PLACEHOLDER,
-        timing: TEAM_PLACEHOLDER,
-      },
-    ],
+    team: {
+      columns: TEAM_DEFAULT_COLUMNS,
+      rows: [
+        ["AI 개발", "모델·Skill 파이프라인 개발", `AI 엔지니어 ${aiHeadcount}명`, "재직"],
+        ["백엔드 개발", "API·인프라·보안", "Backend 엔지니어", "재직"],
+        ["사업화 PM", "공고 대응·사업화 전략", "정부지원 도메인 PM", "[채용 예정]"],
+        ["ML Engineer", "모델 고도화·평가", "ML 전문 인력", "[채용 예정]"],
+      ],
+    },
+    partners: {
+      columns: PARTNER_DEFAULT_COLUMNS,
+      rows: [
+        [
+          program?.agency ?? TEAM_PLACEHOLDER,
+          "공고 주관·멘토링·심사",
+          "설명회·멘토링·중간점검 대응",
+          program?.period ?? TEAM_PLACEHOLDER,
+        ],
+        [TEAM_PLACEHOLDER, TEAM_PLACEHOLDER, TEAM_PLACEHOLDER, TEAM_PLACEHOLDER],
+      ],
+    },
   };
 };

@@ -20,13 +20,17 @@ import {
 } from "@/lib/business-plan-content-parser";
 import { parseDeepBlocks, splitPrimaryAndDeep } from "@/lib/business-plan-outline";
 import { buildTamSamSomTiers } from "@/lib/tam-sam-som-model";
+import { cn } from "@/lib/utils";
 import {
   hasTeamComposition,
-  isPlaceholderRow,
   isPlaceholderValue,
   parseTeamCompositionPlan,
+  tableIsEmpty,
   TEAM_COMPOSITION_COLUMNS,
-  type TeamCompositionPlan,
+  virtualTeamCompositionSample,
+  type OrgChartNode,
+  type RepresentativeRow,
+  type TeamTable,
 } from "@/lib/team-composition-model";
 
 const CHART_COLORS = ["#0040e0", "#031635", "#5b8def", "#93b4f4", "#c5d7fa"];
@@ -161,35 +165,51 @@ const FlowDiagram = ({ steps }: { steps: string[] }) => (
   </div>
 );
 
-const TeamPlaceholderBox = ({ label }: { label: string }) => (
-  <div className="rounded-lg border border-dashed border-outline-variant/50 bg-surface-container/30 px-4 py-6 text-center text-sm text-on-surface-variant/70">
-    {label} — 정보 미입력 (작성 공간 확보)
-  </div>
+const VirtualBadge = () => (
+  <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/70 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+    예시 (가상) · 실제 정보로 교체 필요
+  </span>
 );
 
 const TeamSubsection = ({
   title,
+  virtual,
   children,
 }: {
   title: string;
+  virtual?: boolean;
   children: ReactNode;
 }) => (
   <div className="space-y-2.5">
-    <h4 className="flex items-center gap-2 text-sm font-bold text-primary">
+    <h4 className="flex flex-wrap items-center gap-2 text-sm font-bold text-primary">
       <span className="h-3.5 w-1 rounded-full bg-primary" />
       {title}
+      {virtual ? <VirtualBadge /> : null}
     </h4>
     {children}
   </div>
 );
 
-const OrgChartView = ({ nodes }: { nodes: TeamCompositionPlan["orgChart"] }) => {
+const OrgChartView = ({
+  nodes,
+  virtual,
+}: {
+  nodes: OrgChartNode[];
+  virtual?: boolean;
+}) => {
   const meaningful = nodes.filter((node) => !isPlaceholderValue(node.label));
-  if (meaningful.length === 0) return <TeamPlaceholderBox label="조직도" />;
+  if (meaningful.length === 0) return null;
 
   const [head, ...rest] = meaningful;
   return (
-    <div className="space-y-2 rounded-xl border border-outline-variant/30 bg-surface-container/20 p-4">
+    <div
+      className={cn(
+        "space-y-2 rounded-xl border p-4",
+        virtual
+          ? "border-amber-200/70 bg-amber-50/30"
+          : "border-outline-variant/30 bg-surface-container/20",
+      )}
+    >
       <div className="mx-auto w-fit rounded-xl border-2 border-primary bg-primary/5 px-5 py-3 text-center">
         <p className="text-sm font-bold text-primary">{head!.label}</p>
         {head!.detail ? (
@@ -225,61 +245,50 @@ const placeholderCell = (value: string) =>
     value
   );
 
-const RepresentativeTable = ({
-  rows,
-}: {
-  rows: TeamCompositionPlan["representative"];
-}) => {
-  if (rows.length === 0 || rows.every((row) => isPlaceholderValue(row.value))) {
-    return <TeamPlaceholderBox label="대표자 역량" />;
-  }
-  return (
-    <div className="overflow-x-auto rounded-lg border border-outline-variant/30">
-      <table className="w-full min-w-[320px] text-left text-sm">
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={`${index}-${row.label}`} className="border-t border-outline-variant/20 first:border-t-0">
-              <th className="w-32 bg-surface-container px-4 py-2.5 text-left font-medium text-primary">
-                {row.label}
-              </th>
-              <td className="px-4 py-2.5 text-on-surface-variant">
-                {placeholderCell(row.value)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
+const RepresentativeTable = ({ rows }: { rows: RepresentativeRow[] }) => (
+  <div className="overflow-x-auto rounded-lg border border-outline-variant/30">
+    <table className="w-full min-w-[320px] text-left text-sm">
+      <tbody>
+        {rows.map((row, index) => (
+          <tr
+            key={`${index}-${row.label}`}
+            className="border-t border-outline-variant/20 first:border-t-0"
+          >
+            <th className="w-32 bg-surface-container px-4 py-2.5 text-left font-medium text-primary">
+              {row.label}
+            </th>
+            <td className="px-4 py-2.5 text-on-surface-variant">
+              {placeholderCell(row.value)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
 
 const TeamGridTable = ({
-  columns,
-  rows,
-  emptyLabel,
+  table,
+  fallbackColumns,
 }: {
-  columns: readonly string[];
-  rows: string[][];
-  emptyLabel: string;
+  table: TeamTable;
+  fallbackColumns: readonly string[];
 }) => {
-  const meaningful = rows.filter((row) => !isPlaceholderRow(row));
-  const display = meaningful.length > 0 ? rows : [];
-  if (display.length === 0) return <TeamPlaceholderBox label={emptyLabel} />;
-
+  const columns = table.columns.length ? table.columns : [...fallbackColumns];
   return (
     <div className="overflow-x-auto rounded-lg border border-outline-variant/30">
       <table className="w-full min-w-[480px] text-left text-sm">
         <thead className="bg-surface-container text-xs uppercase text-on-surface-variant">
           <tr>
-            {columns.map((column) => (
-              <th key={column} className="px-4 py-2 font-medium">
+            {columns.map((column, index) => (
+              <th key={`${index}-${column}`} className="px-4 py-2 font-medium">
                 {column}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {display.map((row, rowIndex) => (
+          {table.rows.map((row, rowIndex) => (
             <tr key={rowIndex} className="border-t border-outline-variant/20 align-top">
               {columns.map((_, cellIndex) => (
                 <td key={cellIndex} className="px-4 py-2.5 text-on-surface-variant">
@@ -296,36 +305,39 @@ const TeamGridTable = ({
 
 const TeamCompositionView = ({ content }: { content: string }) => {
   const plan = parseTeamCompositionPlan(content);
+  const sample = virtualTeamCompositionSample();
+
+  const orgVirtual = plan.orgChart.every((node) =>
+    isPlaceholderValue(node.label),
+  );
+  const orgData = orgVirtual ? sample.orgChart : plan.orgChart;
+
+  const repVirtual = plan.representative.every((row) =>
+    isPlaceholderValue(row.value),
+  );
+  const repData = repVirtual ? sample.representative : plan.representative;
+
+  const teamVirtual = tableIsEmpty(plan.team);
+  const teamData = teamVirtual ? sample.team : plan.team;
+
+  const partnerVirtual = tableIsEmpty(plan.partners);
+  const partnerData = partnerVirtual ? sample.partners : plan.partners;
+
   return (
     <div className="space-y-6">
-      <TeamSubsection title="조직도">
-        <OrgChartView nodes={plan.orgChart} />
+      <TeamSubsection title="조직도" virtual={orgVirtual}>
+        <OrgChartView nodes={orgData} virtual={orgVirtual} />
       </TeamSubsection>
-      <TeamSubsection title="대표자 역량">
-        <RepresentativeTable rows={plan.representative} />
+      <TeamSubsection title="대표자 역량" virtual={repVirtual}>
+        <RepresentativeTable rows={repData} />
       </TeamSubsection>
-      <TeamSubsection title="팀 구성(안)">
+      <TeamSubsection title="팀 구성(안)" virtual={teamVirtual}>
+        <TeamGridTable table={teamData} fallbackColumns={TEAM_COMPOSITION_COLUMNS.team} />
+      </TeamSubsection>
+      <TeamSubsection title="협력 기관 현황 및 협업 방안" virtual={partnerVirtual}>
         <TeamGridTable
-          columns={TEAM_COMPOSITION_COLUMNS.team}
-          rows={plan.teamMembers.map((row) => [
-            row.role,
-            row.duty,
-            row.capability,
-            row.status,
-          ])}
-          emptyLabel="팀 구성(안)"
-        />
-      </TeamSubsection>
-      <TeamSubsection title="협력 기관 현황 및 협업 방안">
-        <TeamGridTable
-          columns={TEAM_COMPOSITION_COLUMNS.partner}
-          rows={plan.partners.map((row) => [
-            row.name,
-            row.capability,
-            row.plan,
-            row.timing,
-          ])}
-          emptyLabel="협력 기관 현황 및 협업 방안"
+          table={partnerData}
+          fallbackColumns={TEAM_COMPOSITION_COLUMNS.partner}
         />
       </TeamSubsection>
       <SectionDeepExtras content={content} />
