@@ -38,10 +38,24 @@ const resolveStatus = (daysLeft) => {
   return "모집중";
 };
 
-const extractRegion = (hashTags) => {
-  const hit = REGION_TAGS.find((tag) => (hashTags ?? "").includes(tag));
-  return hit ?? "전국";
+const inferRegionFromText = (text) => {
+  const value = (text ?? "").trim();
+  if (!value) return null;
+
+  const bracket = value.match(/\[([^\]]+)\]/);
+  if (bracket) {
+    const hit = REGION_TAGS.find((tag) => bracket[1].includes(tag));
+    if (hit) return hit;
+  }
+
+  return REGION_TAGS.find((tag) => value.includes(tag)) ?? null;
 };
+
+const extractRegion = (hashTags, title, agency) =>
+  inferRegionFromText(hashTags) ??
+  inferRegionFromText(title) ??
+  inferRegionFromText(agency) ??
+  "전국";
 
 const parseItems = (payload) => {
   if (!payload || typeof payload !== "object") return [];
@@ -72,7 +86,7 @@ const mapItem = (item) => {
     title,
     agency: executingAgency ? `${agency} · ${executingAgency}` : agency,
     category: mapCategory(lcategory),
-    region: extractRegion(item.hashTags ?? ""),
+    region: extractRegion(item.hashTags ?? "", title, agency),
     supportAmount: "공고 확인",
     deadline,
     daysLeft: Math.max(daysLeft, -999),

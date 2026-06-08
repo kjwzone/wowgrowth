@@ -1,5 +1,25 @@
 import type { CompanyProfile, MatchingResult, SupportProgram } from "@/types";
 
+const REGION_TAGS = [
+  "서울",
+  "부산",
+  "대구",
+  "인천",
+  "광주",
+  "대전",
+  "울산",
+  "세종",
+  "경기",
+  "강원",
+  "충북",
+  "충남",
+  "전북",
+  "전남",
+  "경북",
+  "경남",
+  "제주",
+] as const;
+
 export type MatchScoreResult = {
   score: number;
   recommendationLevel: MatchingResult["level"];
@@ -34,10 +54,35 @@ const industryMatchesCategory = (industry: string, category: SupportProgram["cat
   return text.includes(category.toLowerCase());
 };
 
-const regionMatches = (companyRegion: string, programRegion: string): boolean =>
+const normalizeRegion = (raw: string | undefined): string => {
+  const value = (raw ?? "전국").trim();
+  if (!value || value === "전국" || /전국|국내\s*전체/.test(value)) return "전국";
+  return REGION_TAGS.find((tag) => value.includes(tag)) ?? "전국";
+};
+
+const inferRegionFromText = (text: string): string | null => {
+  const bracket = text.match(/\[([^\]]+)\]/);
+  if (bracket) {
+    const hit = REGION_TAGS.find((tag) => bracket[1]!.includes(tag));
+    if (hit) return hit;
+  }
+  return REGION_TAGS.find((tag) => text.includes(tag)) ?? null;
+};
+
+export const resolveCompanyRegion = (company: CompanyProfile): string =>
+  normalizeRegion(company.region);
+
+export const resolveProgramRegion = (program: SupportProgram): string => {
+  const fromField = normalizeRegion(program.region);
+  if (fromField !== "전국") return fromField;
+  const text = [program.title, program.agency].join(" ");
+  return inferRegionFromText(text) ?? "전국";
+};
+
+const isRegionEligible = (companyRegion: string, programRegion: string): boolean =>
   programRegion === "전국" ||
-  programRegion === companyRegion ||
-  companyRegion === "전국";
+  companyRegion === "전국" ||
+  programRegion === companyRegion;
 
 const programText = (program: SupportProgram): string =>
   [program.title, program.summary, program.category, ...program.target, ...program.benefits]
@@ -80,20 +125,31 @@ export const computeMatchScore = (
     };
   }
 
-  let score = 48;
-  const companyRegion = company.region ?? "전국";
+  const companyRegion = resolveCompanyRegion(company);
+  const programRegion = resolveProgramRegion(program);
 
-  if (regionMatches(companyRegion, program.region)) {
-    score += program.region === "전국" ? 12 : 18;
-    reasons.push(
-      program.region === "전국"
-        ? "전국 단위 공고로 지역 제약이 적습니다."
-        : `기업 소재지(${companyRegion})와 공고 지원지역(${program.region})이 일치합니다.`,
-    );
+  if (!isRegionEligible(companyRegion, programRegion)) {
+    return {
+      score: 0,
+      recommendationLevel: "low",
+      reasons: [`지원지역(${programRegion})이 기업 소재지(${companyRegion})와 맞지 않습니다.`],
+      gaps: [
+        `${programRegion} 한정 공고 — ${companyRegion} 소재 기업은 신청 대상에서 제외될 수 있습니다.`,
+      ],
+      suggestions: ["소재지에 맞는 지역·전국 단위 공고를 우선 검토하세요."],
+    };
+  }
+
+  let score = 48;
+
+  if (programRegion === "전국") {
+    score += 12;
+    reasons.push("전국 단위 공고로 지역 제약이 적습니다.");
   } else {
-    score -= 8;
-    gaps.push(`지원지역(${program.region})과 기업 소재지(${companyRegion}) 불일치 가능`);
-    suggestions.push("지원지역 요건을 공고 원문에서 재확인하세요.");
+    score += 18;
+    reasons.push(
+      `기업 소재지(${companyRegion})와 공고 지원지역(${programRegion})이 일치합니다.`,
+    );
   }
 
   if (industryMatchesCategory(company.industry, program.category)) {
