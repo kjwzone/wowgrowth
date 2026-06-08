@@ -16,6 +16,13 @@ import {
 } from "@/lib/budget-execution-plan-model";
 import { buildTamSamSomTiers } from "@/lib/tam-sam-som-model";
 import { parseDeepBlocks } from "@/lib/business-plan-outline";
+import {
+  hasTeamComposition,
+  isPlaceholderRow,
+  isPlaceholderValue,
+  parseTeamCompositionPlan,
+  TEAM_COMPOSITION_COLUMNS,
+} from "@/lib/team-composition-model";
 
 const escapeHtml = (text: string): string =>
   text
@@ -187,6 +194,90 @@ const renderTamSamSomDiagram = (content: string): string => {
   </div>`;
 };
 
+const teamPlaceholderHtml = (label: string): string =>
+  `<div class="team-placeholder">${escapeHtml(label)} — 정보 미입력 (작성 공간 확보)</div>`;
+
+const renderTeamComposition = (content: string): string => {
+  const plan = parseTeamCompositionPlan(content);
+
+  const orgNodes = plan.orgChart.filter((node) => !isPlaceholderValue(node.label));
+  const orgHtml = orgNodes.length
+    ? (() => {
+        const [head, ...rest] = orgNodes;
+        const headHtml = `<div class="org-head"><strong>${escapeHtml(head!.label)}</strong>${head!.detail ? `<span>${escapeHtml(head!.detail)}</span>` : ""}</div>`;
+        const restHtml = rest.length
+          ? `<div class="org-grid">${rest
+              .map(
+                (node) =>
+                  `<div class="org-node"><strong>${escapeHtml(node.label)}</strong>${node.detail ? `<span>${escapeHtml(node.detail)}</span>` : ""}</div>`,
+              )
+              .join("")}</div>`
+          : "";
+        return `<div class="org-chart">${headHtml}${restHtml}</div>`;
+      })()
+    : teamPlaceholderHtml("조직도");
+
+  const repHtml =
+    plan.representative.length > 0 &&
+    !plan.representative.every((row) => isPlaceholderValue(row.value))
+      ? `<table class="kv-table"><tbody>${plan.representative
+          .map(
+            (row) =>
+              `<tr><th>${escapeHtml(row.label)}</th><td>${escapeHtml(row.value || "(작성 필요)")}</td></tr>`,
+          )
+          .join("")}</tbody></table>`
+      : teamPlaceholderHtml("대표자 역량");
+
+  const gridTable = (
+    columns: readonly string[],
+    rows: string[][],
+    label: string,
+  ): string => {
+    if (rows.length === 0 || rows.every((row) => isPlaceholderRow(row))) {
+      return teamPlaceholderHtml(label);
+    }
+    const head = `<thead><tr>${columns
+      .map((column) => `<th>${escapeHtml(column)}</th>`)
+      .join("")}</tr></thead>`;
+    const body = rows
+      .map(
+        (row) =>
+          `<tr>${columns
+            .map(
+              (_, index) =>
+                `<td>${escapeHtml(row[index] ?? "(작성 필요)")}</td>`,
+            )
+            .join("")}</tr>`,
+      )
+      .join("");
+    return `<table class="team-table">${head}<tbody>${body}</tbody></table>`;
+  };
+
+  const teamHtml = gridTable(
+    TEAM_COMPOSITION_COLUMNS.team,
+    plan.teamMembers.map((row) => [
+      row.role,
+      row.duty,
+      row.capability,
+      row.status,
+    ]),
+    "팀 구성(안)",
+  );
+
+  const partnerHtml = gridTable(
+    TEAM_COMPOSITION_COLUMNS.partner,
+    plan.partners.map((row) => [row.name, row.capability, row.plan, row.timing]),
+    "협력 기관 현황 및 협업 방안",
+  );
+
+  return `<div class="team-composition">
+    <div class="team-block"><h4>조직도</h4>${orgHtml}</div>
+    <div class="team-block"><h4>대표자 역량</h4>${repHtml}</div>
+    <div class="team-block"><h4>팀 구성(안)</h4>${teamHtml}</div>
+    <div class="team-block"><h4>협력 기관 현황 및 협업 방안</h4>${partnerHtml}</div>
+  </div>`;
+};
+
 const renderDeepOutline = (content: string): string => {
   const blocks = parseDeepBlocks(content);
   if (blocks.length === 0) return "";
@@ -231,6 +322,9 @@ const renderSectionVisualHtml = (title: string, content: string): string => {
   }
   if (title.includes("성장전략")) {
     return `${renderTamSamSomDiagram(content)}${renderBullets(content)}`;
+  }
+  if (title.includes("팀 구성") && hasTeamComposition(content)) {
+    return `${renderTeamComposition(content)}${deep}`;
   }
   return renderBullets(content);
 };
@@ -300,6 +394,20 @@ const BASE_STYLES = `
   .tam-example { margin: .5rem 0 0; font-size: .875rem; color: #475569; line-height: 1.5; }
   .tam-value { margin: .375rem 0 0; font-size: .75rem; color: #64748b; }
   @media (max-width: 640px) { .tam-diagram-grid { grid-template-columns: 1fr; } }
+  .team-composition { display: flex; flex-direction: column; gap: 1.5rem; }
+  .team-block h4 { margin: 0 0 .625rem; font-size: .9375rem; color: #0040e0; }
+  .team-placeholder { border: 1px dashed #cbd5e1; border-radius: 8px; padding: 1.25rem; text-align: center; color: #94a3b8; font-size: .8125rem; background: #f8fafc; }
+  .org-chart { border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem; background: #f8fafc; text-align: center; }
+  .org-head { display: inline-block; border: 2px solid #0040e0; border-radius: 12px; padding: .625rem 1.25rem; background: #eef2ff; }
+  .org-head strong { display: block; color: #0040e0; font-size: .875rem; }
+  .org-head span { display: block; color: #64748b; font-size: .75rem; margin-top: .125rem; }
+  .org-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .5rem; margin-top: 1rem; }
+  .org-node { border: 1px solid #e2e8f0; border-radius: 8px; padding: .5rem; background: #fff; }
+  .org-node strong { display: block; font-size: .8125rem; color: #031635; }
+  .org-node span { display: block; font-size: .6875rem; color: #64748b; margin-top: .125rem; }
+  .team-table { width: 100%; border-collapse: collapse; font-size: .8125rem; }
+  .team-table th, .team-table td { border: 1px solid #e2e8f0; padding: .5rem .625rem; text-align: left; vertical-align: top; }
+  .team-table th { background: #f1f5f9; font-weight: 600; }
   .bullet-list { padding-left: 1.25rem; font-size: .875rem; }
   .bullet-list li { margin-bottom: .375rem; }
   .deep-outline { margin-top: 1rem; display: flex; flex-direction: column; gap: .875rem; }

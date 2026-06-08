@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   Cell,
   Pie,
@@ -19,6 +20,14 @@ import {
 } from "@/lib/business-plan-content-parser";
 import { parseDeepBlocks, splitPrimaryAndDeep } from "@/lib/business-plan-outline";
 import { buildTamSamSomTiers } from "@/lib/tam-sam-som-model";
+import {
+  hasTeamComposition,
+  isPlaceholderRow,
+  isPlaceholderValue,
+  parseTeamCompositionPlan,
+  TEAM_COMPOSITION_COLUMNS,
+  type TeamCompositionPlan,
+} from "@/lib/team-composition-model";
 
 const CHART_COLORS = ["#0040e0", "#031635", "#5b8def", "#93b4f4", "#c5d7fa"];
 
@@ -152,6 +161,178 @@ const FlowDiagram = ({ steps }: { steps: string[] }) => (
   </div>
 );
 
+const TeamPlaceholderBox = ({ label }: { label: string }) => (
+  <div className="rounded-lg border border-dashed border-outline-variant/50 bg-surface-container/30 px-4 py-6 text-center text-sm text-on-surface-variant/70">
+    {label} — 정보 미입력 (작성 공간 확보)
+  </div>
+);
+
+const TeamSubsection = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) => (
+  <div className="space-y-2.5">
+    <h4 className="flex items-center gap-2 text-sm font-bold text-primary">
+      <span className="h-3.5 w-1 rounded-full bg-primary" />
+      {title}
+    </h4>
+    {children}
+  </div>
+);
+
+const OrgChartView = ({ nodes }: { nodes: TeamCompositionPlan["orgChart"] }) => {
+  const meaningful = nodes.filter((node) => !isPlaceholderValue(node.label));
+  if (meaningful.length === 0) return <TeamPlaceholderBox label="조직도" />;
+
+  const [head, ...rest] = meaningful;
+  return (
+    <div className="space-y-2 rounded-xl border border-outline-variant/30 bg-surface-container/20 p-4">
+      <div className="mx-auto w-fit rounded-xl border-2 border-primary bg-primary/5 px-5 py-3 text-center">
+        <p className="text-sm font-bold text-primary">{head!.label}</p>
+        {head!.detail ? (
+          <p className="mt-0.5 text-xs text-on-surface-variant">{head!.detail}</p>
+        ) : null}
+      </div>
+      {rest.length > 0 ? (
+        <>
+          <div className="mx-auto h-4 w-px bg-outline-variant/60" />
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {rest.map((node, index) => (
+              <div
+                key={`${index}-${node.label}`}
+                className="rounded-lg border border-outline-variant/40 bg-white px-3 py-2.5 text-center"
+              >
+                <p className="text-sm font-semibold text-on-surface">{node.label}</p>
+                {node.detail ? (
+                  <p className="mt-0.5 text-xs text-on-surface-variant">{node.detail}</p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+};
+
+const placeholderCell = (value: string) =>
+  isPlaceholderValue(value) ? (
+    <span className="text-on-surface-variant/50">{value || "(작성 필요)"}</span>
+  ) : (
+    value
+  );
+
+const RepresentativeTable = ({
+  rows,
+}: {
+  rows: TeamCompositionPlan["representative"];
+}) => {
+  if (rows.length === 0 || rows.every((row) => isPlaceholderValue(row.value))) {
+    return <TeamPlaceholderBox label="대표자 역량" />;
+  }
+  return (
+    <div className="overflow-x-auto rounded-lg border border-outline-variant/30">
+      <table className="w-full min-w-[320px] text-left text-sm">
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={`${index}-${row.label}`} className="border-t border-outline-variant/20 first:border-t-0">
+              <th className="w-32 bg-surface-container px-4 py-2.5 text-left font-medium text-primary">
+                {row.label}
+              </th>
+              <td className="px-4 py-2.5 text-on-surface-variant">
+                {placeholderCell(row.value)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+const TeamGridTable = ({
+  columns,
+  rows,
+  emptyLabel,
+}: {
+  columns: readonly string[];
+  rows: string[][];
+  emptyLabel: string;
+}) => {
+  const meaningful = rows.filter((row) => !isPlaceholderRow(row));
+  const display = meaningful.length > 0 ? rows : [];
+  if (display.length === 0) return <TeamPlaceholderBox label={emptyLabel} />;
+
+  return (
+    <div className="overflow-x-auto rounded-lg border border-outline-variant/30">
+      <table className="w-full min-w-[480px] text-left text-sm">
+        <thead className="bg-surface-container text-xs uppercase text-on-surface-variant">
+          <tr>
+            {columns.map((column) => (
+              <th key={column} className="px-4 py-2 font-medium">
+                {column}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {display.map((row, rowIndex) => (
+            <tr key={rowIndex} className="border-t border-outline-variant/20 align-top">
+              {columns.map((_, cellIndex) => (
+                <td key={cellIndex} className="px-4 py-2.5 text-on-surface-variant">
+                  {placeholderCell(row[cellIndex] ?? "")}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+const TeamCompositionView = ({ content }: { content: string }) => {
+  const plan = parseTeamCompositionPlan(content);
+  return (
+    <div className="space-y-6">
+      <TeamSubsection title="조직도">
+        <OrgChartView nodes={plan.orgChart} />
+      </TeamSubsection>
+      <TeamSubsection title="대표자 역량">
+        <RepresentativeTable rows={plan.representative} />
+      </TeamSubsection>
+      <TeamSubsection title="팀 구성(안)">
+        <TeamGridTable
+          columns={TEAM_COMPOSITION_COLUMNS.team}
+          rows={plan.teamMembers.map((row) => [
+            row.role,
+            row.duty,
+            row.capability,
+            row.status,
+          ])}
+          emptyLabel="팀 구성(안)"
+        />
+      </TeamSubsection>
+      <TeamSubsection title="협력 기관 현황 및 협업 방안">
+        <TeamGridTable
+          columns={TEAM_COMPOSITION_COLUMNS.partner}
+          rows={plan.partners.map((row) => [
+            row.name,
+            row.capability,
+            row.plan,
+            row.timing,
+          ])}
+          emptyLabel="협력 기관 현황 및 협업 방안"
+        />
+      </TeamSubsection>
+      <SectionDeepExtras content={content} />
+    </div>
+  );
+};
+
 const SectionDeepExtras = ({ content }: { content: string }) => {
   const deepBlocks = parseDeepBlocks(content);
   if (deepBlocks.length === 0) return null;
@@ -264,6 +445,9 @@ export const BusinessPlanSectionVisual = ({
   }
 
   if (sectionTitle.includes("팀 구성")) {
+    if (hasTeamComposition(content)) {
+      return <TeamCompositionView content={content} />;
+    }
     return (
       <div className="space-y-4">
         <TeamCards items={bullets} />

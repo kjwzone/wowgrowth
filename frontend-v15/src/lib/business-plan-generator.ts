@@ -24,6 +24,10 @@ import {
   mergeDeepContent,
 } from "@/lib/business-plan-deep-content";
 import { normalizeBusinessPlanContent } from "@/lib/business-plan-outline";
+import {
+  buildTeamCompositionPlan,
+  serializeTeamCompositionPlan,
+} from "@/lib/team-composition-model";
 import type { BusinessPlanDraft, BusinessPlanSection, SupportProgram } from "@/types";
 
 let draftProgramOverride: SupportProgram | undefined;
@@ -116,13 +120,8 @@ const sectionContentBuilders: Record<
         `■ GTM: ${company.name} — 창업진흥원·K-Startup 연계 · 세무·노무 파트너 채널`,
         "■ ESG: 중소기업 디지털 전환·일자리 창출 기여",
       ].join("\n"),
-    "4. 팀 구성 Team_대표자 및 팀원 구성 계획": ({ company }) =>
-      [
-        "■ 대표: 정부지원·AI SaaS 10년+ · Series A 준비",
-        `■ 핵심 인력: AI(${Math.floor(company.employees / 3)}명) · 백엔드 · PM · CS`,
-        `■ 협력: ${company.certifications.includes("벤처기업") ? "벤처캠프·TIPS 멘토" : "지역 창업센터"} 연계`,
-        "■ 채용 계획: 사업화 PM 1 · ML Engineer 1 (협약 3개월 내)",
-      ].join("\n"),
+    "4. 팀 구성 Team_대표자 및 팀원 구성 계획": ({ company, program }) =>
+      serializeTeamCompositionPlan(buildTeamCompositionPlan(company, program)),
   },
   "gov-funding-plan": {
     "과제 개요": ({ company, program }) =>
