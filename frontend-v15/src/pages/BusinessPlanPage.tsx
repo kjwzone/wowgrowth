@@ -1,17 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AlertCircle, CheckCircle2, Download, LayoutList, Pencil, Send } from "lucide-react";
+import { Download, LayoutList, Pencil, Send } from "lucide-react";
 import { PageHeader, SectionCard } from "@/components/ui/PageHeader";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { AiAgentPanel } from "@/components/ui/AiAgentPanel";
 import { BusinessPlanEditor } from "@/components/ui/BusinessPlanEditor";
 import { BusinessPlanPreview } from "@/components/ui/BusinessPlanPreview";
+import { SubmissionResultPanel } from "@/components/ui/SubmissionResultPanel";
 import { BUSINESS_PLAN_SKILL_LABELS } from "@/lib/business-plan-skill";
 import { mergeDraftToDocument } from "@/lib/business-plan-document";
 import { downloadBusinessPlanHtml } from "@/lib/business-plan-html-export";
 import { companyProfile } from "@/data/company";
 import { selectReferenceImages } from "@/lib/business-plan-reference-images";
+import type { RemediationAction } from "@/lib/business-plan-submission-remediation";
 import { businessPlanApi, type SubmissionCheckResult } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import type { BusinessPlanDraft } from "@/types";
 
 type EditorViewMode = "sections" | "preview";
@@ -28,6 +31,7 @@ export default function BusinessPlanPage() {
     null,
   );
   const [viewMode, setViewMode] = useState<EditorViewMode>("sections");
+  const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setLoadError(null);
@@ -119,6 +123,30 @@ export default function BusinessPlanPage() {
   const jumpToSectionEdit = (sectionId: string) => {
     setActiveId(sectionId);
     setViewMode("sections");
+    requestAnimationFrame(() => {
+      editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const handleRemediation = async (action: RemediationAction) => {
+    if (!draft) return;
+
+    if (action.type === "jump-section") {
+      jumpToSectionEdit(action.sectionId);
+      return;
+    }
+
+    if (action.type === "generate-section") {
+      setActiveId(action.sectionId);
+      setViewMode("sections");
+      await generateSection();
+      return;
+    }
+
+    await generateFullDraft(action.mode);
+    requestAnimationFrame(() => {
+      editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   if (loadError) {
@@ -132,6 +160,9 @@ export default function BusinessPlanPage() {
   }
 
   const activeSection = draft.sections.find((s) => s.id === activeId);
+  const submissionPassed = submissionResult?.ok === true;
+  const submissionFailed = submissionResult?.ok === false;
+  const isSubmissionReady = draft.status === "ready" && submissionPassed;
 
   return (
     <div>
@@ -163,16 +194,29 @@ export default function BusinessPlanPage() {
             <button
               type="button"
               onClick={() => void prepareSubmission()}
-              disabled={submitting || draft.status === "ready"}
+              disabled={submitting || isSubmissionReady}
               title={
-                draft.status === "ready"
+                isSubmissionReady
                   ? "이미 제출 준비가 완료되었습니다"
-                  : "submission-verifier 스킬로 제출 전 검증을 실행합니다"
+                  : submissionFailed
+                    ? "보완 후 제출 검증을 다시 실행합니다"
+                    : "submission-verifier 스킬로 제출 전 검증을 실행합니다"
               }
-              className="inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-on-secondary disabled:opacity-60"
+              className={cn(
+                "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition",
+                isSubmissionReady
+                  ? "bg-emerald-600 text-white disabled:opacity-100"
+                  : "bg-secondary text-on-secondary hover:opacity-90 disabled:opacity-60",
+              )}
             >
               <Send className="h-4 w-4" />
-              {submitting ? "검증 중..." : draft.status === "ready" ? "제출 준비 완료" : "제출 준비"}
+              {submitting
+                ? "검증 중..."
+                : isSubmissionReady
+                  ? "제출 준비 완료"
+                  : submissionFailed
+                    ? "다시 검증"
+                    : "제출 준비"}
             </button>
           </div>
         }
@@ -198,42 +242,12 @@ export default function BusinessPlanPage() {
       </div>
 
       {submissionResult ? (
-        <div
-          className={`mb-6 rounded-xl border p-4 ${
-            submissionResult.ok
-              ? "border-secondary/30 bg-secondary/5"
-              : "border-error/30 bg-error/5"
-          }`}
-        >
-          <p className="flex items-center gap-2 text-sm font-semibold text-primary">
-            {submissionResult.ok ? (
-              <>
-                <CheckCircle2 className="h-4 w-4 text-secondary" />
-                제출 준비 완료 — 사업계획서를 다운로드하거나 제출하세요
-              </>
-            ) : (
-              <>
-                <AlertCircle className="h-4 w-4 text-error" />
-                제출 준비 불가 — 아래 항목을 보완하세요
-              </>
-            )}
-          </p>
-          <ul className="mt-3 space-y-1.5 text-sm text-on-surface-variant">
-            {submissionResult.checklist.map((item) => (
-              <li key={item.item} className="flex items-start gap-2">
-                {item.pass ? (
-                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-secondary" />
-                ) : (
-                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-error" />
-                )}
-                <span>
-                  {item.item}
-                  {item.note ? ` — ${item.note}` : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <SubmissionResultPanel
+          draft={draft}
+          result={submissionResult}
+          onRemediate={(action) => void handleRemediation(action)}
+          onRetry={() => void prepareSubmission()}
+        />
       ) : null}
 
       <AiAgentPanel
@@ -258,6 +272,7 @@ export default function BusinessPlanPage() {
         fullGenerateQualityLabel="고품질 생성"
       />
 
+      <div ref={editorRef}>
       <SectionCard
         title={viewMode === "sections" ? "항목별 에디터" : "통합 미리보기"}
         description={
@@ -308,6 +323,7 @@ export default function BusinessPlanPage() {
           />
         ) : null}
       </SectionCard>
+      </div>
     </div>
   );
 }
