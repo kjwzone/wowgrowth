@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Download, LayoutList, Pencil, Send } from "lucide-react";
 import { PageHeader, SectionCard } from "@/components/ui/PageHeader";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { AiAgentPanel } from "@/components/ui/AiAgentPanel";
+import { AiAgentPanel, type AiGeneratingTask } from "@/components/ui/AiAgentPanel";
 import { BusinessPlanEditor } from "@/components/ui/BusinessPlanEditor";
 import { BusinessPlanPreview } from "@/components/ui/BusinessPlanPreview";
 import { SubmissionResultPanel } from "@/components/ui/SubmissionResultPanel";
@@ -26,6 +26,7 @@ export default function BusinessPlanPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState("");
   const [aiState, setAiState] = useState<"idle" | "generating" | "done">("idle");
+  const [aiGeneratingTask, setAiGeneratingTask] = useState<AiGeneratingTask | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submissionResult, setSubmissionResult] = useState<SubmissionCheckResult | null>(
     null,
@@ -54,19 +55,23 @@ export default function BusinessPlanPage() {
 
   const generateSection = async () => {
     if (!draft || !activeId) return;
+    setAiGeneratingTask("section");
     setAiState("generating");
     const updated = await businessPlanApi.generateSection(activeId, setDraft);
     setDraft(updated);
+    setAiGeneratingTask(null);
     setAiState("done");
     setTimeout(() => setAiState("idle"), 1500);
   };
 
   const generateFullDraft = async (mode: "fast" | "pipeline" = "fast") => {
     if (!draft) return;
+    setAiGeneratingTask(mode === "pipeline" ? "full-quality" : "full-fast");
     setAiState("generating");
     setSubmissionResult(null);
     const updated = await businessPlanApi.generateFullDraft(setDraft, { mode });
     setDraft(updated);
+    setAiGeneratingTask(null);
     setAiState("done");
     setTimeout(() => setAiState("idle"), 1500);
   };
@@ -261,6 +266,7 @@ export default function BusinessPlanPage() {
               : "business-plan-writer 스킬 양식(7개 항목) 기준으로 초안을 생성합니다."
         }
         state={aiState}
+        generatingTask={aiGeneratingTask}
         skillId={draft.skillId}
         pipelineSteps={draft.pipelineSteps}
         activeAgent={draft.activeAgent}

@@ -8,6 +8,7 @@ import type { CompanyProfile } from "@/types";
 export default function CompanyProfilePage() {
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [aiState, setAiState] = useState<"idle" | "generating" | "done">("idle");
+  const [aiGeneratingTask, setAiGeneratingTask] = useState<"section" | null>(null);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -15,8 +16,12 @@ export default function CompanyProfilePage() {
   }, []);
 
   const runDiagnosis = () => {
+    setAiGeneratingTask("section");
     setAiState("generating");
-    setTimeout(() => setAiState("done"), 2000);
+    setTimeout(() => {
+      setAiGeneratingTask(null);
+      setAiState("done");
+    }, 2000);
   };
 
   const onSave = async () => {
@@ -94,6 +99,7 @@ export default function CompanyProfilePage() {
                   : "기업정보를 저장한 뒤 AI 진단을 실행하세요."
               }
               state={aiState}
+              generatingTask={aiGeneratingTask}
               onGenerate={runDiagnosis}
               generateLabel="AI 진단 실행"
             />

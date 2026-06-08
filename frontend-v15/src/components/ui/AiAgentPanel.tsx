@@ -5,10 +5,16 @@ import type { BusinessPlanSkillId, PipelineStep } from "@/types";
 
 type AiState = "idle" | "generating" | "done";
 
+export type AiGeneratingTask = "full-fast" | "full-quality" | "section";
+
+const isGenerating = (state: AiState, generatingTask?: AiGeneratingTask | null) =>
+  state === "generating" || generatingTask != null;
+
 export const AiAgentPanel = ({
   title = "AI 에이전트",
   message,
   state = "idle",
+  generatingTask = null,
   onGenerate,
   generateLabel = "선택 섹션 AI 추가 생성 (심화)",
   skillId,
@@ -22,6 +28,7 @@ export const AiAgentPanel = ({
   title?: string;
   message: string;
   state?: AiState;
+  generatingTask?: AiGeneratingTask | null;
   onGenerate?: () => void;
   generateLabel?: string;
   skillId?: BusinessPlanSkillId;
@@ -31,11 +38,14 @@ export const AiAgentPanel = ({
   onGenerateFullQuality?: () => void;
   fullGenerateLabel?: string;
   fullGenerateQualityLabel?: string;
-}) => (
+}) => {
+  const busy = isGenerating(state, generatingTask);
+
+  return (
   <div className="rounded-xl border border-secondary/20 bg-gradient-to-br from-primary-fixed/30 to-secondary-fixed/20 p-5">
     <div className="flex items-start gap-3">
       <div className="rounded-lg bg-secondary p-2 text-on-secondary">
-        {state === "generating" ? (
+        {state === "generating" || generatingTask != null ? (
           <Loader2 className="h-5 w-5 animate-spin" />
         ) : (
           <Bot className="h-5 w-5" />
@@ -61,7 +71,7 @@ export const AiAgentPanel = ({
         <p
           className={cn(
             "mt-2 text-sm text-on-surface-variant",
-            state === "generating" && "animate-pulse",
+            state === "generating" || generatingTask != null ? "animate-pulse" : undefined,
           )}
         >
           {message}
@@ -92,10 +102,10 @@ export const AiAgentPanel = ({
             <button
               type="button"
               onClick={onGenerateFull}
-              disabled={state === "generating"}
+              disabled={busy}
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition hover:opacity-90 disabled:opacity-60"
             >
-              {state === "generating" ? (
+              {generatingTask === "full-fast" ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   AI 생성 중...
@@ -112,25 +122,40 @@ export const AiAgentPanel = ({
             <button
               type="button"
               onClick={onGenerateFullQuality}
-              disabled={state === "generating"}
+              disabled={busy}
               title="공고 분석 + Pro 모델 2단계 (약 2~4분)"
               className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-surface px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/5 disabled:opacity-60"
             >
-              {fullGenerateQualityLabel}
+              {generatingTask === "full-quality" ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  AI 생성 중...
+                </>
+              ) : (
+                fullGenerateQualityLabel
+              )}
             </button>
           ) : null}
           {onGenerate ? (
             <button
               type="button"
               onClick={onGenerate}
-              disabled={state === "generating"}
+              disabled={busy}
               className="inline-flex items-center gap-2 rounded-lg border border-secondary bg-surface px-4 py-2 text-sm font-medium text-secondary transition hover:bg-secondary/10 disabled:opacity-60"
             >
-              {generateLabel}
+              {generatingTask === "section" ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  AI 생성 중...
+                </>
+              ) : (
+                generateLabel
+              )}
             </button>
           ) : null}
         </div>
       </div>
     </div>
   </div>
-);
+  );
+};
