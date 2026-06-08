@@ -9,13 +9,57 @@ import {
   PATENT_STATUSES,
   RESEARCH_ORG_OPTIONS,
 } from "@/lib/company-profile-model";
+import {
+  createEmptyFinancialYear,
+  DEFAULT_UNIT_MULTIPLIER,
+} from "@/lib/company-financials";
 import type {
+  CompanyFinancials,
   CompanyProfile,
+  FinancialYear,
   PatentEntry,
   PatentKind,
   PatentStatus,
   ResearchOrgType,
 } from "@/types";
+
+const FINANCIAL_ROWS: Array<{ key: keyof Omit<FinancialYear, "year">; label: string }> = [
+  { key: "revenue", label: "매출액" },
+  { key: "operatingProfit", label: "영업이익" },
+  { key: "netIncome", label: "당기순이익" },
+  { key: "totalAssets", label: "자산총계" },
+  { key: "currentAssets", label: "유동자산" },
+  { key: "currentLiabilities", label: "유동부채" },
+  { key: "totalLiabilities", label: "부채총계" },
+  { key: "totalEquity", label: "자본총계" },
+];
+
+type FinancialMetaKey =
+  | "shareCount"
+  | "interestExpense"
+  | "depreciation"
+  | "collateralBookValue"
+  | "existingDebt";
+
+const FINANCIAL_META: Array<{ key: FinancialMetaKey; label: string; unit: string }> = [
+  { key: "shareCount", label: "발행주식수", unit: "주" },
+  { key: "interestExpense", label: "이자비용", unit: "백만원" },
+  { key: "depreciation", label: "감가상각비", unit: "백만원" },
+  { key: "collateralBookValue", label: "담보 장부가", unit: "백만원" },
+  { key: "existingDebt", label: "기존 차입금", unit: "백만원" },
+];
+
+const buildDefaultFinancials = (): CompanyFinancials => {
+  const thisYear = new Date().getFullYear();
+  return {
+    unitMultiplier: DEFAULT_UNIT_MULTIPLIER,
+    years: [
+      createEmptyFinancialYear(String(thisYear - 3)),
+      createEmptyFinancialYear(String(thisYear - 2)),
+      createEmptyFinancialYear(String(thisYear - 1)),
+    ],
+  };
+};
 
 const inputClass =
   "w-full rounded-lg border border-outline-variant/50 px-3 py-2 text-sm focus:border-secondary focus:outline-none";
@@ -89,6 +133,33 @@ export default function CompanyProfilePage() {
       ...profile,
       patentEntries: patents.filter((entry) => entry.id !== id),
     });
+  };
+
+  const financials = profile.financials ?? buildDefaultFinancials();
+
+  const setFinancials = (next: CompanyFinancials) => {
+    setProfile({ ...profile, financials: next });
+  };
+
+  const updateFinancialYear = (
+    index: number,
+    patch: Partial<FinancialYear>,
+  ) => {
+    setFinancials({
+      ...financials,
+      years: financials.years.map((entry, idx) =>
+        idx === index ? { ...entry, ...patch } : entry,
+      ),
+    });
+  };
+
+  const updateFinancialMeta = (key: FinancialMetaKey, value: number) => {
+    setFinancials({ ...financials, [key]: value });
+  };
+
+  const toNumber = (raw: string): number => {
+    const parsed = Number(raw.replace(/,/g, ""));
+    return Number.isFinite(parsed) ? parsed : 0;
   };
 
   const fields: Array<{ key: keyof CompanyProfile; label: string; type?: string }> = [
@@ -384,6 +455,89 @@ export default function CompanyProfilePage() {
               </tbody>
             </table>
           </div>
+        </SectionCard>
+      </div>
+
+      <div className="mt-6">
+        <SectionCard
+          title="재무제표 (최근 3개년)"
+          description="입력 단위: 백만원 · 입력 시 진단보고서의 재무비율·자금조달·주당평가액이 자동 계산됩니다."
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-outline-variant/40 text-left text-xs text-on-surface-variant">
+                  <th className="px-2 py-2 font-medium">항목 (백만원)</th>
+                  {financials.years.map((entry, index) => (
+                    <th key={index} className="px-1 py-2 font-medium">
+                      <input
+                        value={entry.year}
+                        onChange={(e) =>
+                          updateFinancialYear(index, { year: e.target.value })
+                        }
+                        placeholder="연도"
+                        className={`${inputClass} text-center`}
+                      />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {FINANCIAL_ROWS.map((row) => (
+                  <tr
+                    key={row.key}
+                    className="border-b border-outline-variant/20"
+                  >
+                    <td className="px-2 py-1.5 font-medium text-primary">
+                      {row.label}
+                    </td>
+                    {financials.years.map((entry, index) => (
+                      <td key={index} className="px-1 py-1.5">
+                        <input
+                          inputMode="numeric"
+                          value={entry[row.key] === 0 ? "" : entry[row.key]}
+                          onChange={(e) =>
+                            updateFinancialYear(index, {
+                              [row.key]: toNumber(e.target.value),
+                            } as Partial<FinancialYear>)
+                          }
+                          placeholder="0"
+                          className={`${inputClass} text-right`}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {FINANCIAL_META.map(({ key, label, unit }) => (
+              <label key={key} className="block text-sm">
+                <span className="text-on-surface-variant">
+                  {label} <span className="text-on-surface-variant/50">({unit})</span>
+                </span>
+                <input
+                  inputMode="numeric"
+                  value={
+                    typeof financials[key] === "number" && financials[key] !== 0
+                      ? (financials[key] as number)
+                      : ""
+                  }
+                  onChange={(e) =>
+                    updateFinancialMeta(key, toNumber(e.target.value))
+                  }
+                  placeholder="0"
+                  className={`mt-1 ${inputClass} text-right`}
+                />
+              </label>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-on-surface-variant/70">
+            ※ 주당평가액은 상증법 보충적 평가(순손익가치 3 : 순자산가치 2), 담보·신용
+            한도는 담보 장부가 LTV 70%·자본총계 30% 기준 추정치입니다.
+          </p>
         </SectionCard>
       </div>
     </div>

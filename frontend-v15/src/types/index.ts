@@ -50,6 +50,36 @@ export type PatentEntry = {
 
 export type ResearchOrgType = "기업부설연구소" | "연구전담부서" | "없음";
 
+/** 단일 회계연도 재무제표 핵심 항목 (입력 단위는 CompanyFinancials.unitMultiplier 기준) */
+export type FinancialYear = {
+  year: string;
+  revenue: number;
+  operatingProfit: number;
+  netIncome: number;
+  totalAssets: number;
+  currentAssets: number;
+  currentLiabilities: number;
+  totalLiabilities: number;
+  totalEquity: number;
+};
+
+export type CompanyFinancials = {
+  /** 입력 금액을 원으로 환산하는 배수 (기본 1,000,000 = 백만원 단위) */
+  unitMultiplier?: number;
+  /** 발행주식수 (주) */
+  shareCount?: number;
+  /** 이자비용 (EBITDA/이자 계산용) */
+  interestExpense?: number;
+  /** 감가상각비 (EBITDA 계산용) */
+  depreciation?: number;
+  /** 담보 장부가 (담보대출한도 추정용) */
+  collateralBookValue?: number;
+  /** 기존 차입금 (추가대출여력 계산용) */
+  existingDebt?: number;
+  /** 최근 연도가 마지막에 오도록 오름차순 권장, 최대 3개년 */
+  years: FinancialYear[];
+};
+
 export type CompanyProfile = {
   id: string;
   name: string;
@@ -64,6 +94,7 @@ export type CompanyProfile = {
   patents: string[];
   patentEntries?: PatentEntry[];
   researchOrg?: ResearchOrgType;
+  financials?: CompanyFinancials;
   diagnosisStatus: "완료" | "진행중" | "미시작";
   diagnosisScore: number;
   region?: string;

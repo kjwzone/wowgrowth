@@ -1,4 +1,10 @@
 import type { CompanyProfile, MatchingResult } from "@/types";
+import {
+  computeFunding,
+  computeKeyRatios,
+  computePerShareValueWon,
+  hasFinancialData,
+} from "@/lib/company-financials";
 
 export type DiagnosisCommentary = {
   overview: string;
@@ -153,12 +159,19 @@ const buildCommentary = (
   matching: readonly MatchingResult[],
   overallScore: number,
   topMatch: { programTitle: string; score: number } | undefined,
+  useFinancials: boolean,
 ): DiagnosisCommentary => ({
   overview: `${company.name}은(는) ${company.industry} 분야 ${company.stage} 기업입니다. AI 정부지원 매칭 종합 적합도는 ${overallScore}점(${scoreToGrade(overallScore)})이며, ${topMatch ? `최우선 추천 공고는 「${topMatch.programTitle}」(${topMatch.score}점)입니다.` : "추천 공고 매칭을 재실행할 필요가 있습니다."}`,
-  stability: `${company.certifications.length > 0 ? `벤처·인증(${company.certifications.join(", ")})을 보유해 대외 신뢰도가 양호합니다.` : "인증·신뢰 지표는 추가 확인이 필요합니다."} 재무제표 기반 부채비율·유동비율은 하네스 calculate 단계에서 산출됩니다.`,
-  profitability: `매출 ${company.revenue}, 임직원 ${company.employees}명 규모입니다. 영업이익률·ROE 등 수익성 지표는 재무제표 3개년 연동 후 IU.Partners 양식과 동일 엔진으로 계산됩니다.`,
-  funding: "차입금·EBITDA·담보한도는 재무제표·담보 장부가 입력 시 funding 블록에서 결정적으로 산출됩니다. 현재 화면은 MVP 데모 추정치입니다.",
-  tax: "주당평가액·상증세 추정은 상증법 보충적 평가 기준의 자체 추정치이며, 정식 감정평가·세무신고와 차이가 날 수 있습니다. total_shares·재무제표 연동 후 tax_valuation이 생성됩니다.",
+  stability: `${company.certifications.length > 0 ? `벤처·인증(${company.certifications.join(", ")})을 보유해 대외 신뢰도가 양호합니다.` : "인증·신뢰 지표는 추가 확인이 필요합니다."} ${useFinancials ? "부채비율·유동비율은 입력하신 재무제표에서 결정적으로 산출되었습니다." : "재무제표 기반 부채비율·유동비율은 재무제표 입력 시 산출됩니다."}`,
+  profitability: useFinancials
+    ? `매출 ${company.revenue}, 임직원 ${company.employees}명 규모입니다. 영업이익률·ROE 등 수익성 지표는 입력하신 3개년 재무제표에서 계산되었습니다.`
+    : `매출 ${company.revenue}, 임직원 ${company.employees}명 규모입니다. 영업이익률·ROE 등 수익성 지표는 재무제표 3개년 연동 후 IU.Partners 양식과 동일 엔진으로 계산됩니다.`,
+  funding: useFinancials
+    ? "EBITDA/이자보상배율은 입력 재무에서 산출됐으며, 담보·신용 대출한도는 담보 장부가(LTV 70%)·자본총계(30%) 기준 추정치입니다."
+    : "차입금·EBITDA·담보한도는 재무제표·담보 장부가 입력 시 funding 블록에서 결정적으로 산출됩니다. 현재 화면은 MVP 데모 추정치입니다.",
+  tax: useFinancials
+    ? "주당평가액은 상증법 보충적 평가(순손익가치 3 : 순자산가치 2)로 입력 재무·발행주식수에서 산출한 추정치이며, 정식 감정평가·세무신고와 차이가 날 수 있습니다."
+    : "주당평가액·상증세 추정은 상증법 보충적 평가 기준의 자체 추정치이며, 정식 감정평가·세무신고와 차이가 날 수 있습니다. total_shares·재무제표 연동 후 tax_valuation이 생성됩니다.",
   summary: matching.length > 0
     ? `AI 매칭 ${matching.length}건 기준, 공고별 갭·권고를 반영해 사업계획서·제출 준비를 진행하세요. 동종평균·신용등급 등 외부 데이터는 별도 연동 전까지 N/A 처리합니다.`
     : "기업정보를 최신화한 뒤 AI 매칭을 실행하고, 서류(사업자등록증·주주명부·재무제표)를 업로드하면 하네스로 xlsx 진단서를 생성할 수 있습니다.",
@@ -180,8 +193,33 @@ export const buildCompanyDiagnosisReport = (
 
   const weaknesses = matching.flatMap((item) => item.gaps);
   const recommendations = matching.flatMap((item) => item.suggestions);
-  const ratioYears = ["2021", "2022", "2023"];
-  const perShare = Math.round(24_194.8 * (overallScore / 82));
+
+  const useFinancials = hasFinancialData(company.financials);
+  const computedRatios = useFinancials
+    ? computeKeyRatios(company.financials!)
+    : null;
+  const ratioYears = computedRatios?.years.length
+    ? computedRatios.years
+    : ["2021", "2022", "2023"];
+  const keyRatios = computedRatios?.rows ?? buildKeyRatios(overallScore);
+
+  const funding = useFinancials
+    ? computeFunding(company.financials!)
+    : {
+        collateralLimit: formatWon(1_553_000),
+        creditLimit: formatWon(486_346),
+        additionalCapacity: "-760,734천원",
+        ebitdaInterest: "1.92배",
+      };
+
+  const computedPerShare = useFinancials
+    ? computePerShareValueWon(company.financials!)
+    : null;
+  const perShare =
+    computedPerShare ?? Math.round(24_194.8 * (overallScore / 82));
+  const perShareNote = useFinancials
+    ? "상증법 보충적 평가 (순손익가치 3 : 순자산가치 2)"
+    : "상증법 보충적 평가 자체 추정치 (재무제표 입력 시 산출)";
 
   return {
     companyName: company.name,
@@ -191,20 +229,21 @@ export const buildCompanyDiagnosisReport = (
     status: company.diagnosisStatus,
     industry: company.industry,
     stage: company.stage,
-    commentary: buildCommentary(company, matching, overallScore, topMatches[0]),
+    commentary: buildCommentary(
+      company,
+      matching,
+      overallScore,
+      topMatches[0],
+      useFinancials,
+    ),
     sectionGrades: buildSectionGrades(company, overallScore, topMatches[0]?.score),
-    keyRatios: buildKeyRatios(overallScore),
+    keyRatios,
     ratioYears,
-    funding: {
-      collateralLimit: formatWon(1_553_000),
-      creditLimit: formatWon(486_346),
-      additionalCapacity: "-760,734천원",
-      ebitdaInterest: "1.92배",
-    },
+    funding,
     tax: {
       perShareValue: `${perShare.toLocaleString("ko-KR")}원/주`,
       grade: scoreToGrade(overallScore),
-      note: "상증법 보충적 평가 자체 추정치",
+      note: perShareNote,
     },
     externalData: {
       industryAvg: "N/A (동종평균 데이터 필요)",

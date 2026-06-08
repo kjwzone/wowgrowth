@@ -18,8 +18,21 @@ describe("company-diagnosis", () => {
     expect(COMMENTARY_SECTIONS).toHaveLength(6);
     expect(report.commentary.overview).toContain("82");
     expect(report.keyRatios.length).toBeGreaterThan(0);
-    expect(report.ratioYears).toEqual(["2021", "2022", "2023"]);
+    // 기본 프로필에 재무제표가 연동되어 입력 연도·계산값을 사용
+    expect(report.ratioYears).toEqual(["2023", "2024", "2025"]);
+    const debtRatio = report.keyRatios.find((r) => r.label === "부채비율(%)");
+    expect(debtRatio?.values["2025"]).toBe(157.1);
+    expect(report.tax.note).toContain("순손익가치");
     expect(report.topMatches[0]?.score).toBeGreaterThanOrEqual(88);
     expect(report.disclaimer).toContain("IU.Partners");
+  });
+
+  it("falls back to demo estimates when no financials are provided", () => {
+    const report = buildCompanyDiagnosisReport(
+      { ...companyProfile, financials: undefined },
+      matchingResults,
+    );
+    expect(report.ratioYears).toEqual(["2021", "2022", "2023"]);
+    expect(report.tax.note).toContain("재무제표 입력 시 산출");
   });
 });

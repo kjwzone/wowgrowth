@@ -15,13 +15,28 @@ describe("diagnosis-harness-data", () => {
     expect(parsePerShareValue("24,195원/주")).toBe(24195);
   });
 
-  it("builds harness payload with three years of ratios", () => {
+  it("builds harness payload from the company's real financial statements", () => {
     const payload = buildHarnessPayload(report, companyProfile);
     expect(payload.company.name).toBe("와우그로스(주)");
-    expect(payload.meta.대상연도).toEqual(["2021", "2022", "2023"]);
-    expect(payload.financials["2023"]?.revenue).toBeGreaterThan(0);
+    // 기본 프로필 재무제표(2023~2025, 백만원) 연동
+    expect(payload.meta.대상연도).toEqual(["2023", "2024", "2025"]);
+    // 2023 매출 800백만원 → 800,000천원
+    expect(payload.financials["2023"]?.revenue).toBe(800_000);
+    expect(payload.financials["2025"]?.total_equity).toBe(700_000);
     expect(payload.diagnosis.종합진단등급).toBe("B");
     expect(payload.commentary.overview).toContain("82");
+  });
+
+  it("falls back to demo financials when no statements are entered", () => {
+    const payload = buildHarnessPayload(
+      buildCompanyDiagnosisReport(
+        { ...companyProfile, financials: undefined },
+        matchingResults,
+      ),
+      { ...companyProfile, financials: undefined },
+    );
+    expect(payload.meta.대상연도).toEqual(["2021", "2022", "2023"]);
+    expect(payload.financials["2023"]?.revenue).toBeGreaterThan(0);
   });
 
   it("builds safe xlsx filename", () => {

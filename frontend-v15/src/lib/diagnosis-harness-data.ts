@@ -1,5 +1,8 @@
 import type { CompanyDiagnosisReport } from "@/lib/company-diagnosis";
+import { hasFinancialData } from "@/lib/company-financials";
 import type { CompanyProfile } from "@/types";
+
+const UNIT_TO_THOUSAND = 1000; // 입력 백만원 → 하네스 천원 단위
 
 export type HarnessFinancialYear = {
   current_assets: number;
@@ -169,6 +172,52 @@ const ratioFromFinancials = (
   return result;
 };
 
+/** 입력된 기업 재무제표(백만원)를 하네스 재무 구조(천원)로 변환 */
+const companyFinancialsToHarness = (
+  company: CompanyProfile,
+): { years: string[]; financials: Record<string, HarnessFinancialYear> } | null => {
+  if (!hasFinancialData(company.financials)) return null;
+  const fin = company.financials;
+
+  const sorted = [...fin.years]
+    .filter((year) => year.year.trim().length > 0)
+    .sort((a, b) => a.year.localeCompare(b.year));
+  if (sorted.length === 0) return null;
+
+  const k = (value: number): number => Math.round(value * UNIT_TO_THOUSAND);
+  const interest = k(fin.interestExpense ?? 0);
+  const debt = k(fin.existingDebt ?? 0);
+
+  const financials: Record<string, HarnessFinancialYear> = {};
+  sorted.forEach((year) => {
+    financials[year.year] = {
+      current_assets: k(year.currentAssets),
+      non_current_assets: k(year.totalAssets - year.currentAssets),
+      total_assets: k(year.totalAssets),
+      current_liabilities: k(year.currentLiabilities),
+      non_current_liabilities: k(year.totalLiabilities - year.currentLiabilities),
+      total_liabilities: k(year.totalLiabilities),
+      capital_stock: 0,
+      retained_earnings: k(year.totalEquity),
+      total_equity: k(year.totalEquity),
+      revenue: k(year.revenue),
+      gross_profit: 0,
+      sga: 0,
+      operating_income: k(year.operatingProfit),
+      non_operating_income: 0,
+      non_operating_expense: 0,
+      pretax_income: k(year.netIncome),
+      corporate_tax: 0,
+      net_income: k(year.netIncome),
+      interest_expense: interest,
+      short_term_debt: debt,
+      long_term_debt: 0,
+    };
+  });
+
+  return { years: sorted.map((year) => year.year), financials };
+};
+
 export const parsePerShareValue = (value: string): number | null => {
   const digits = value.replace(/[^\d]/g, "");
   if (!digits) return null;
@@ -179,10 +228,17 @@ export const buildHarnessPayload = (
   report: CompanyDiagnosisReport,
   company: CompanyProfile,
 ): HarnessPayload => {
-  const years = report.ratioYears.length > 0 ? report.ratioYears : ["2021", "2022", "2023"];
-  const financials = Object.fromEntries(
-    years.map((year) => [year, BASE_FINANCIALS[year] ?? BASE_FINANCIALS["2023"]!]),
-  ) as Record<string, HarnessFinancialYear>;
+  const realFinancials = companyFinancialsToHarness(company);
+  const years = realFinancials
+    ? realFinancials.years
+    : report.ratioYears.length > 0
+      ? report.ratioYears
+      : ["2021", "2022", "2023"];
+  const financials =
+    realFinancials?.financials ??
+    (Object.fromEntries(
+      years.map((year) => [year, BASE_FINANCIALS[year] ?? BASE_FINANCIALS["2023"]!]),
+    ) as Record<string, HarnessFinancialYear>);
 
   const ratios = ratioFromFinancials(financials, years);
   report.keyRatios.forEach((row) => {
