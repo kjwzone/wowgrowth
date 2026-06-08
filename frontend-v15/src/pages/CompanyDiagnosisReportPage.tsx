@@ -108,7 +108,7 @@ export default function CompanyDiagnosisReportPage() {
             </button>
             <button
               type="button"
-              title="IU.Partners 6시트 양식 xlsx 다운로드"
+              title="IU.Partners 5시트 양식 xlsx 다운로드"
               disabled={xlsxLoading}
               className="inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-on-secondary hover:opacity-90 disabled:opacity-60"
               onClick={() => void downloadXlsx()}

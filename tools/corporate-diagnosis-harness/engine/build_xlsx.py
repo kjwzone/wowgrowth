@@ -168,10 +168,6 @@ def build_workbook(R, path):
     ws5 = wb.create_sheet("5.세무진단")
     _tax_sheet(ws5, R)
 
-    # 면책
-    last = wb.create_sheet("면책")
-    last.cell(row=1,column=1,value=R.get("disclaimer","")).font = Font(italic=True, color="808080")
-
     wb.save(path)
 
 # --- 보조 블록 함수들 ---

@@ -335,13 +335,6 @@ const buildTaxSheet = (workbook: ExcelJS.Workbook, payload: HarnessPayload): voi
   });
 };
 
-const buildDisclaimerSheet = (workbook: ExcelJS.Workbook, payload: HarnessPayload): void => {
-  const ws = workbook.addWorksheet("면책");
-  ws.getCell(1, 1).value = payload.disclaimer;
-  ws.getCell(1, 1).font = { italic: true, color: { argb: "FF808080" } };
-  ws.getCell(1, 1).alignment = { wrapText: true };
-};
-
 export const buildDiagnosisHarnessWorkbook = async (
   report: CompanyDiagnosisReport,
   company: CompanyProfile,
@@ -355,7 +348,6 @@ export const buildDiagnosisHarnessWorkbook = async (
   buildDiagnosisSheet(workbook, payload);
   buildFundingSheet(workbook, payload);
   buildTaxSheet(workbook, payload);
-  buildDisclaimerSheet(workbook, payload);
   return workbook;
 };
 
