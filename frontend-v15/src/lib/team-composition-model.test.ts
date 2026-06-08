@@ -44,7 +44,8 @@ describe("team-composition-model", () => {
     const parsed = parseTeamCompositionPlan(serialized);
     expect(parsed.orgChart[0]?.label).toContain("대표");
     expect(parsed.representative.map((row) => row.label)).toContain("주요 역량");
-    expect(parsed.team.rows[0]?.[0]).toBe("AI 개발");
+    expect(parsed.team.columns).toEqual(["직책", "담당 업무", "보유 역량", "구성 상태"]);
+    expect(parsed.team.rows[0]?.[0]).toContain("대표이사");
     expect(parsed.partners.rows.length).toBeGreaterThan(0);
   });
 
