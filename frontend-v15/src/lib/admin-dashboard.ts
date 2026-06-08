@@ -2,28 +2,17 @@ export type ProgramStatus = "draft" | "published" | "closed";
 
 export type JobStatus = "queued" | "running" | "succeeded" | "failed";
 
-export type ProgramStatusCounts = Record<ProgramStatus, number> & { total: number };
+export type {
+  AdminBusinessPlanRow,
+  AdminCompanyRow,
+  AdminDashboardDetails,
+  AdminDashboardSummary,
+  AdminDiagnosisRow,
+  AdminMatchingRow,
+  ProgramStatusCounts,
+} from "@/lib/admin-dashboard-types";
 
-export type AdminDashboardSummary = {
-  programs: ProgramStatusCounts;
-  companies: number;
-  matches: number;
-  diagnosisReports: number;
-  businessPlans: number;
-  pendingReviews: number;
-  aiJobs: Record<JobStatus, number> & { total: number };
-  recentFailedJobs: ReadonlyArray<{
-    id: string;
-    task_type: string;
-    error_code: string | null;
-    created_at: string;
-  }>;
-  pendingReviewItems: ReadonlyArray<{
-    id: string;
-    title: string;
-    created_at: string;
-  }>;
-};
+import type { AdminDashboardSummary, ProgramStatusCounts } from "@/lib/admin-dashboard-types";
 
 const emptyProgramCounts = (): ProgramStatusCounts => ({
   total: 0,
@@ -95,3 +84,12 @@ export const fetchAdminDashboardSummary = async (): Promise<AdminDashboardSummar
 
   return payload.summary;
 };
+
+export const formatAdminDate = (iso: string): string =>
+  new Date(iso).toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });

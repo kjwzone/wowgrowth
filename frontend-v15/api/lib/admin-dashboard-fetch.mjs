@@ -1,3 +1,10 @@
+import {
+  mapBusinessPlanRows,
+  mapCompanyRows,
+  mapDiagnosisRows,
+  mapMatchingRows,
+} from "./admin-dashboard-mappers.mjs";
+
 const emptyProgramCounts = () => ({
   total: 0,
   draft: 0,
@@ -46,6 +53,51 @@ export const countJobStatuses = (rows) =>
     emptyJobCounts(),
   );
 
+export const fetchAdminDashboardDetails = async (supabase) => {
+  const [companiesRes, diagnosisRes, matchesRes, plansRes] = await Promise.all([
+    supabase
+      .from("companies")
+      .select("id, company_name, business_number, industry, region, created_at, updated_at")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("diagnosis_reports")
+      .select(
+        "id, company_id, status, model, created_at, updated_at, report_json, companies ( company_name )",
+      )
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("matching_results")
+      .select(
+        "id, company_id, program_id, score, recommendation_level, status, reasons, created_at, companies ( company_name ), support_programs ( title, agency, status )",
+      )
+      .order("score", { ascending: false }),
+    supabase
+      .from("business_plan_drafts")
+      .select(
+        "id, company_id, program_id, title, status, model, plan_json, created_at, updated_at, companies ( company_name ), support_programs ( title, agency )",
+      )
+      .order("updated_at", { ascending: false }),
+  ]);
+
+  const errors = [
+    companiesRes.error,
+    diagnosisRes.error,
+    matchesRes.error,
+    plansRes.error,
+  ].filter(Boolean);
+
+  if (errors.length > 0) {
+    throw new Error(errors.map((error) => error.message).join("; "));
+  }
+
+  return {
+    companies: mapCompanyRows(companiesRes.data ?? []),
+    diagnosisReports: mapDiagnosisRows(diagnosisRes.data ?? []),
+    matchingResults: mapMatchingRows(matchesRes.data ?? []),
+    businessPlans: mapBusinessPlanRows(plansRes.data ?? []),
+  };
+};
+
 export const fetchAdminDashboardSummary = async (supabase) => {
   const [
     programsRes,
@@ -57,6 +109,7 @@ export const fetchAdminDashboardSummary = async (supabase) => {
     jobsRes,
     failedJobsRes,
     pendingItemsRes,
+    details,
   ] = await Promise.all([
     supabase.from("support_programs").select("status"),
     supabase.from("companies").select("id", { count: "exact", head: true }),
@@ -80,6 +133,7 @@ export const fetchAdminDashboardSummary = async (supabase) => {
       .in("status", ["reviewing", "draft"])
       .order("created_at", { ascending: false })
       .limit(5),
+    fetchAdminDashboardDetails(supabase),
   ]);
 
   const errors = [
@@ -142,5 +196,6 @@ export const fetchAdminDashboardSummary = async (supabase) => {
     aiJobs: countJobStatuses(jobsRes.data ?? []),
     recentFailedJobs: failedJobsRes.data ?? [],
     pendingReviewItems,
+    details,
   };
 };

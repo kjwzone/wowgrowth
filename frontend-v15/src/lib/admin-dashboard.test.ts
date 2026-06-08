@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   countJobStatuses,
   countProgramStatuses,
+  formatAdminDate,
 } from "@/lib/admin-dashboard";
 
 describe("admin-dashboard", () => {
@@ -36,5 +37,10 @@ describe("admin-dashboard", () => {
       running: 1,
       queued: 0,
     });
+  });
+
+  it("formats admin dates in ko-KR", () => {
+    const formatted = formatAdminDate("2026-06-05T02:30:00Z");
+    expect(formatted).toContain("2026");
   });
 });

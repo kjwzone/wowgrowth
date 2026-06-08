@@ -19,6 +19,7 @@ export const StatCard = ({
   icon: Icon,
   trend,
   href,
+  onClick,
   tone = "default",
 }: {
   label: string;
@@ -28,6 +29,7 @@ export const StatCard = ({
   icon?: LucideIcon;
   trend?: "up" | "down" | "neutral";
   href?: string;
+  onClick?: () => void;
   tone?: StatCardTone;
 }) => {
   const detail = hint ?? sub;
@@ -37,7 +39,7 @@ export const StatCard = ({
       className={cn(
         "rounded-xl border p-5 shadow-sm transition",
         toneClasses[tone],
-        href && "hover:-translate-y-0.5 hover:opacity-95",
+        (href || onClick) && "cursor-pointer hover:-translate-y-0.5 hover:opacity-95",
       )}
     >
       <div className="flex items-start justify-between">
@@ -67,11 +69,21 @@ export const StatCard = ({
     </div>
   );
 
-  return href ? (
-    <Link to={href} className="block">
-      {content}
-    </Link>
-  ) : (
-    content
-  );
+  if (href) {
+    return (
+      <Link to={href} className="block">
+        {content}
+      </Link>
+    );
+  }
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className="block w-full text-left">
+        {content}
+      </button>
+    );
+  }
+
+  return content;
 };
