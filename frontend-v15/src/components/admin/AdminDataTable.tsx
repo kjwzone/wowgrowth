@@ -21,32 +21,37 @@ export const AdminDataTable = <T extends { id: string }>({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-left text-sm">
-        <thead>
-          <tr className="border-b border-outline-variant/30 text-xs uppercase tracking-wide text-on-surface-variant">
-            {columns.map((column) => (
-              <th key={column.key} className={`px-3 py-2 font-semibold ${column.className ?? ""}`}>
-                {column.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr
-              key={row.id}
-              className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/40"
-            >
+    <div className="overflow-hidden rounded-lg border border-outline-variant/25">
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-left text-sm">
+          <thead className="bg-surface-container">
+            <tr className="text-xs uppercase tracking-wide text-on-surface-variant">
               {columns.map((column) => (
-                <td key={column.key} className={`px-3 py-3 align-top ${column.className ?? ""}`}>
-                  {column.render(row)}
-                </td>
+                <th
+                  key={column.key}
+                  className={`px-4 py-3 font-semibold ${column.className ?? ""}`}
+                >
+                  {column.header}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-outline-variant/15 bg-white">
+            {rows.map((row) => (
+              <tr key={row.id} className="transition hover:bg-surface-container-low/80">
+                {columns.map((column) => (
+                  <td
+                    key={column.key}
+                    className={`px-4 py-3.5 align-top ${column.className ?? ""}`}
+                  >
+                    {column.render(row)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

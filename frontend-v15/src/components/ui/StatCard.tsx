@@ -5,10 +5,10 @@ import { cn } from "@/lib/utils";
 export type StatCardTone = "default" | "warn" | "ok" | "accent";
 
 const toneClasses: Record<StatCardTone, string> = {
-  default: "border-outline-variant/40 bg-white",
-  warn: "border-amber-200 bg-amber-50",
-  ok: "border-emerald-200 bg-emerald-50",
-  accent: "border-indigo-200 bg-indigo-50",
+  default: "border-outline-variant/30 bg-surface-container-lowest",
+  warn: "border-amber-200/80 bg-gradient-to-br from-amber-50/80 to-white",
+  ok: "border-emerald-200/80 bg-gradient-to-br from-emerald-50/60 to-white",
+  accent: "border-secondary/20 bg-gradient-to-br from-primary-fixed/40 to-white",
 };
 
 export const StatCard = ({

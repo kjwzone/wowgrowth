@@ -7,16 +7,17 @@ import {
   Stethoscope,
 } from "lucide-react";
 import { AdminDataTable } from "@/components/admin/AdminDataTable";
+import { AdminPanel } from "@/components/admin/AdminPanel";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
-import { PageHeader, SectionCard } from "@/components/ui/PageHeader";
+import { AdminTabBar, type AdminTabItem } from "@/components/admin/AdminTabBar";
+import { FailedJobList } from "@/components/admin/FailedJobList";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { adminDashboardApi } from "@/lib/api";
 import { formatAdminDate, type AdminDashboardSummary } from "@/lib/admin-dashboard";
-import { cn } from "@/lib/utils";
+import { getAdminTabCount, type AdminTab } from "@/lib/admin-dashboard-tabs";
 
-type AdminTab = "overview" | "companies" | "diagnosis" | "matching" | "plans";
-
-const tabs: { id: AdminTab; label: string; icon: typeof Building2 }[] = [
+const tabs: AdminTabItem<AdminTab>[] = [
   { id: "overview", label: "운영 현황", icon: LayoutDashboard },
   { id: "companies", label: "등록 기업", icon: Building2 },
   { id: "diagnosis", label: "기업진단 보고서", icon: Stethoscope },
@@ -47,6 +48,17 @@ export default function AdminDashboardPage() {
   }, []);
 
   const details = summary?.details;
+
+  const tabsWithCounts = useMemo(
+    () =>
+      details
+        ? tabs.map((tab) => ({
+            ...tab,
+            count: getAdminTabCount(tab.id, details),
+          }))
+        : tabs,
+    [details],
+  );
 
   const companyColumns = useMemo(
     () =>
@@ -245,9 +257,9 @@ export default function AdminDashboardPage() {
 
   if (error) {
     return (
-      <div>
+      <div className="space-y-6">
         <PageHeader title="관리자 대시보드" description="등록 기업·진단·매칭·사업계획서 통합 조회" />
-        <SectionCard title="Supabase 연결 필요">
+        <AdminPanel title="Supabase 연결 필요">
           <p className="text-sm text-error">{error}</p>
           <p className="mt-2 text-sm text-on-surface-variant">
             Vercel(kd4u) Environment Variables에{" "}
@@ -255,68 +267,31 @@ export default function AdminDashboardPage() {
             <code className="rounded bg-surface-container px-1">SUPABASE_SERVICE_ROLE_KEY</code>를
             등록한 뒤 재배포하세요.
           </p>
-        </SectionCard>
+        </AdminPanel>
       </div>
     );
   }
 
   if (!summary || !details) {
-    return <p className="text-on-surface-variant">관리자 대시보드 로딩 중...</p>;
+    return (
+      <div className="flex min-h-[240px] items-center justify-center rounded-xl border border-outline-variant/30 bg-white">
+        <p className="text-on-surface-variant">관리자 대시보드 로딩 중...</p>
+      </div>
+    );
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="관리자 대시보드"
         description="등록 기업·진단 보고서·AI 매칭·사업계획서 통합 조회"
       />
 
-      <div className="mb-6 flex flex-wrap gap-2">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const count =
-            tab.id === "companies"
-              ? details.companies.length
-              : tab.id === "diagnosis"
-                ? details.diagnosisReports.length
-                : tab.id === "matching"
-                  ? details.matchingResults.length
-                  : tab.id === "plans"
-                    ? details.businessPlans.length
-                    : null;
-
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition",
-                activeTab === tab.id
-                  ? "bg-primary text-on-primary"
-                  : "border border-outline-variant/50 bg-white text-primary hover:bg-surface-container",
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {tab.label}
-              {count !== null ? (
-                <span
-                  className={cn(
-                    "rounded-full px-2 py-0.5 text-xs",
-                    activeTab === tab.id ? "bg-white/20" : "bg-surface-container",
-                  )}
-                >
-                  {count}
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
+      <AdminTabBar tabs={tabsWithCounts} activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === "overview" ? (
-        <>
-          <SectionCard title="운영 현황" description="Supabase 실데이터 기준 요약">
+        <div className="space-y-6">
+          <AdminPanel title="운영 현황" description="Supabase 실데이터 기준 요약">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard
                 label="공고 (게시)"
@@ -354,64 +329,49 @@ export default function AdminDashboardPage() {
                 value={summary.diagnosisReports}
                 onClick={() => setActiveTab("diagnosis")}
               />
-              <StatCard label="AI 작업 성공" value={summary.aiJobs.succeeded} />
+              <StatCard label="AI 작업 성공" value={summary.aiJobs.succeeded} tone="ok" />
               <StatCard
                 label="AI 작업 전체"
                 value={summary.aiJobs.total}
                 hint={`queued ${summary.aiJobs.queued} · running ${summary.aiJobs.running}`}
               />
             </div>
-          </SectionCard>
+          </AdminPanel>
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <SectionCard
-              title="사용자별 AI 문서 현황"
-              description="최근 생성·수정된 사업계획서"
-            >
-              <AdminDataTable
-                columns={planColumns.slice(0, 5)}
-                rows={details.businessPlans.slice(0, 5)}
-                emptyMessage="생성된 AI 문서가 없습니다."
-              />
-              {details.businessPlans.length > 5 ? (
+          <AdminPanel
+            title="사용자별 AI 문서 현황"
+            description="최근 생성·수정된 사업계획서"
+            action={
+              details.businessPlans.length > 0 ? (
                 <button
                   type="button"
                   onClick={() => setActiveTab("plans")}
-                  className="mt-4 text-sm font-medium text-secondary hover:underline"
+                  className="text-sm font-medium text-secondary hover:underline"
                 >
                   전체 {details.businessPlans.length}건 보기 →
                 </button>
-              ) : null}
-            </SectionCard>
+              ) : null
+            }
+          >
+            <AdminDataTable
+              columns={planColumns}
+              rows={details.businessPlans}
+              emptyMessage="생성된 AI 문서가 없습니다."
+            />
+          </AdminPanel>
 
-            <SectionCard title="최근 실패한 AI 작업">
-              {summary.recentFailedJobs.length === 0 ? (
-                <p className="text-sm text-on-surface-variant">실패한 작업이 없습니다.</p>
-              ) : (
-                <ul className="divide-y divide-outline-variant/20 text-sm">
-                  {summary.recentFailedJobs.map((job) => (
-                    <li key={job.id} className="py-3">
-                      <p className="font-mono text-xs text-on-surface-variant">
-                        {job.id.slice(0, 8)}
-                      </p>
-                      <p className="text-primary">
-                        {job.task_type}
-                        {job.error_code ? ` · ${job.error_code}` : ""}
-                      </p>
-                      <p className="text-xs text-on-surface-variant">
-                        {formatAdminDate(job.created_at)}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </SectionCard>
-          </div>
-        </>
+          <AdminPanel
+            title="최근 실패한 AI 작업"
+            description="최근 10건의 실패 작업"
+            variant="warn"
+          >
+            <FailedJobList jobs={summary.recentFailedJobs} />
+          </AdminPanel>
+        </div>
       ) : null}
 
       {activeTab === "companies" ? (
-        <SectionCard
+        <AdminPanel
           title="등록 기업"
           description={`총 ${details.companies.length}개 기업 · 최신 등록순`}
         >
@@ -420,11 +380,11 @@ export default function AdminDashboardPage() {
             rows={details.companies}
             emptyMessage="등록된 기업이 없습니다."
           />
-        </SectionCard>
+        </AdminPanel>
       ) : null}
 
       {activeTab === "diagnosis" ? (
-        <SectionCard
+        <AdminPanel
           title="기업진단 보고서"
           description={`총 ${details.diagnosisReports.length}건 · 기업별 생성 현황`}
         >
@@ -433,11 +393,11 @@ export default function AdminDashboardPage() {
             rows={details.diagnosisReports}
             emptyMessage="생성된 기업진단 보고서가 없습니다."
           />
-        </SectionCard>
+        </AdminPanel>
       ) : null}
 
       {activeTab === "matching" ? (
-        <SectionCard
+        <AdminPanel
           title="AI 매칭 · 추천 지원사업"
           description={`총 ${details.matchingResults.length}건 · 매칭 점수순`}
         >
@@ -446,11 +406,11 @@ export default function AdminDashboardPage() {
             rows={details.matchingResults}
             emptyMessage="AI 매칭 결과가 없습니다."
           />
-        </SectionCard>
+        </AdminPanel>
       ) : null}
 
       {activeTab === "plans" ? (
-        <SectionCard
+        <AdminPanel
           title="사용자별 AI 문서·신청 현황"
           description={`총 ${details.businessPlans.length}건 · 사업계획서 생성·수정 현황`}
         >
@@ -459,7 +419,7 @@ export default function AdminDashboardPage() {
             rows={details.businessPlans}
             emptyMessage="생성된 사업계획서가 없습니다."
           />
-        </SectionCard>
+        </AdminPanel>
       ) : null}
     </div>
   );
