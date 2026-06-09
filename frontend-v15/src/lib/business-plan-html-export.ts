@@ -34,6 +34,8 @@ import {
   hasFormBlocks,
   parseFormBlocks,
 } from "@/lib/business-plan-form-blocks";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 
 const escapeHtml = (text: string): string =>
   text
@@ -781,11 +783,6 @@ const appendCanvasToPdf = (
 };
 
 export const renderBusinessPlanPdfBlob = async (target: HTMLElement): Promise<Blob> => {
-  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-    import("html2canvas"),
-    import("jspdf"),
-  ]);
-
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
   const blocks = PDF_CAPTURE_BLOCKS(target);
   let hasPages = false;

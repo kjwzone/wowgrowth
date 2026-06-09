@@ -187,10 +187,15 @@ export default function BusinessPlanPage() {
       }
     } catch (error) {
       console.error("사업계획서 다운로드 실패", error);
+      const message =
+        error instanceof Error ? error.message : "파일 다운로드에 실패했습니다.";
+      const isStaleChunk =
+        message.includes("Failed to fetch dynamically imported module") ||
+        message.includes("Importing a module script failed");
       setDownloadError(
-        error instanceof Error
-          ? error.message
-          : "파일 다운로드에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+        isStaleChunk
+          ? "앱이 업데이트되었습니다. 페이지를 새로고침(F5)한 뒤 다시 다운로드해 주세요."
+          : message || "파일 다운로드에 실패했습니다. 잠시 후 다시 시도해 주세요.",
       );
     } finally {
       setDownloadingFormat(null);
