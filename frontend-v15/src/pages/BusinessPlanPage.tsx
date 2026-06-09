@@ -13,8 +13,8 @@ import {
   downloadBusinessPlanDocx,
   downloadBusinessPlanHtml,
   downloadBusinessPlanPdf,
-  getBusinessPlanExportFilename,
-  pickBusinessPlanPdfWritable,
+  revokePdfDownloadOffer,
+  type PdfDownloadOffer,
 } from "@/lib/business-plan-html-export";
 import { companyProfile } from "@/data/company";
 import { selectReferenceImages } from "@/lib/business-plan-reference-images";
@@ -44,6 +44,7 @@ export default function BusinessPlanPage() {
     "html" | "docx" | "pdf" | null
   >(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [pdfOffer, setPdfOffer] = useState<PdfDownloadOffer | null>(null);
   const downloadMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -137,6 +138,15 @@ export default function BusinessPlanPage() {
     [draft],
   );
 
+  useEffect(
+    () => () => {
+      if (pdfOffer) {
+        revokePdfDownloadOffer(pdfOffer);
+      }
+    },
+    [pdfOffer],
+  );
+
   useEffect(() => {
     if (!downloadMenuOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
@@ -162,19 +172,6 @@ export default function BusinessPlanPage() {
       companyProfile.product,
     );
 
-    let pdfWritable: FileSystemWritableFileStream | undefined;
-    if (format === "pdf") {
-      const pick = await pickBusinessPlanPdfWritable(
-        getBusinessPlanExportFilename(mergedDocument, "pdf"),
-      );
-      if (pick.kind === "cancelled") {
-        return;
-      }
-      if (pick.kind === "writable") {
-        pdfWritable = pick.stream;
-      }
-    }
-
     try {
       setDownloadingFormat(format);
       if (format === "html") {
@@ -182,7 +179,11 @@ export default function BusinessPlanPage() {
       } else if (format === "docx") {
         await downloadBusinessPlanDocx(mergedDocument, references);
       } else {
-        await downloadBusinessPlanPdf(mergedDocument, references, pdfWritable);
+        if (pdfOffer) {
+          revokePdfDownloadOffer(pdfOffer);
+        }
+        const offer = await downloadBusinessPlanPdf(mergedDocument, references);
+        setPdfOffer(offer);
       }
     } catch (error) {
       console.error("사업계획서 다운로드 실패", error);
@@ -435,6 +436,49 @@ export default function BusinessPlanPage() {
         ) : null}
       </SectionCard>
       </div>
+
+      {pdfOffer ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div
+            role="dialog"
+            aria-labelledby="pdf-offer-title"
+            className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
+          >
+            <h2 id="pdf-offer-title" className="text-lg font-bold text-primary">
+              PDF 준비 완료
+            </h2>
+            <p className="mt-2 text-sm text-on-surface-variant">
+              아래 버튼을 눌러 파일을 저장해 주세요.
+            </p>
+            <p className="mt-1 truncate text-xs text-on-surface-variant">{pdfOffer.filename}</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  revokePdfDownloadOffer(pdfOffer);
+                  setPdfOffer(null);
+                }}
+                className="rounded-lg border border-outline-variant px-4 py-2 text-sm hover:bg-surface-container"
+              >
+                닫기
+              </button>
+              <a
+                href={pdfOffer.url}
+                download={pdfOffer.filename}
+                className="inline-flex items-center rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-on-secondary hover:opacity-90"
+                onClick={() => {
+                  window.setTimeout(() => {
+                    revokePdfDownloadOffer(pdfOffer);
+                    setPdfOffer(null);
+                  }, 1500);
+                }}
+              >
+                PDF 다운로드
+              </a>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

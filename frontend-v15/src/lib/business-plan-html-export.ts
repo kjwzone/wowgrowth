@@ -668,7 +668,7 @@ export const createBusinessPlanPdfHost = (
     top: "0",
     width: "794px",
     overflow: "visible",
-    zIndex: "-1",
+    zIndex: "2147483646",
     opacity: "1",
     visibility: "visible",
     pointerEvents: "none",
@@ -726,38 +726,58 @@ export const ensurePdfTargetReady = async (target: HTMLElement): Promise<void> =
 
 export const getBusinessPlanExportFilename = buildExportFilename;
 
-type FilePickerWindow = Window & {
-  showSaveFilePicker?: (options: {
-    suggestedName?: string;
-    types?: Array<{ description: string; accept: Record<string, string[]> }>;
-  }) => Promise<FileSystemFileHandle>;
+export type PdfDownloadOffer = {
+  blob: Blob;
+  filename: string;
+  url: string;
 };
 
-export type PdfWritablePickResult =
-  | { kind: "writable"; stream: FileSystemWritableFileStream }
-  | { kind: "fallback" }
-  | { kind: "cancelled" };
+const PDF_CAPTURE_BLOCKS = (target: HTMLElement): HTMLElement[] => {
+  const children = Array.from(target.children).filter(
+    (node): node is HTMLElement => node instanceof HTMLElement,
+  );
+  return children.length > 0 ? children : [target];
+};
 
-/** Chrome/Edge: 사용자 클릭 직후 저장 위치를 선택해 비동기 생성 후에도 저장 가능 */
-export const pickBusinessPlanPdfWritable = async (
-  filename: string,
-): Promise<PdfWritablePickResult> => {
-  const pickerWindow = window as FilePickerWindow;
-  if (typeof pickerWindow.showSaveFilePicker !== "function") {
-    return { kind: "fallback" };
-  }
-  try {
-    const handle = await pickerWindow.showSaveFilePicker({
-      suggestedName: filename,
-      types: [{ description: "PDF 문서", accept: { "application/pdf": [".pdf"] } }],
-    });
-    return { kind: "writable", stream: await handle.createWritable() };
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      return { kind: "cancelled" };
+const appendCanvasToPdf = (
+  pdf: {
+    addPage: () => void;
+    addImage: (
+      imageData: string,
+      format: string,
+      x: number,
+      y: number,
+      width: number,
+      height: number,
+    ) => void;
+    internal: { pageSize: { getWidth: () => number; getHeight: () => number } };
+  },
+  canvas: HTMLCanvasElement,
+  hasPages: boolean,
+): boolean => {
+  const margin = 10;
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const contentWidth = pageWidth - margin * 2;
+  const contentHeight = pageHeight - margin * 2;
+  const imgData = canvas.toDataURL("image/jpeg", 0.92);
+  const imgHeight = (canvas.height * contentWidth) / canvas.width;
+
+  let heightLeft = imgHeight;
+  let position = margin;
+  let started = hasPages;
+
+  while (heightLeft > 0) {
+    if (started) {
+      pdf.addPage();
     }
-    throw error;
+    pdf.addImage(imgData, "JPEG", margin, position, contentWidth, imgHeight);
+    heightLeft -= contentHeight;
+    position = heightLeft - imgHeight + margin;
+    started = true;
   }
+
+  return started;
 };
 
 export const renderBusinessPlanPdfBlob = async (target: HTMLElement): Promise<Blob> => {
@@ -766,50 +786,48 @@ export const renderBusinessPlanPdfBlob = async (target: HTMLElement): Promise<Bl
     import("jspdf"),
   ]);
 
-  const canvas = await html2canvas(target, {
-    scale: 1.5,
-    useCORS: true,
-    backgroundColor: "#ffffff",
-    logging: false,
-    scrollX: 0,
-    scrollY: -window.scrollY,
-    foreignObjectRendering: false,
-  });
+  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const blocks = PDF_CAPTURE_BLOCKS(target);
+  let hasPages = false;
 
-  if (canvas.width === 0 || canvas.height === 0) {
+  for (const block of blocks) {
+    const canvas = await html2canvas(block, {
+      scale: 1.25,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+      scrollX: 0,
+      scrollY: 0,
+      foreignObjectRendering: false,
+    });
+
+    if (canvas.width === 0 || canvas.height === 0) {
+      continue;
+    }
+
+    hasPages = appendCanvasToPdf(pdf, canvas, hasPages);
+  }
+
+  if (!hasPages) {
     throw new Error("PDF canvas is empty");
   }
 
-  const imgData = canvas.toDataURL("image/jpeg", 0.92);
-  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
-  const margin = 10;
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const contentWidth = pageWidth - margin * 2;
-  const contentHeight = pageHeight - margin * 2;
-  const imgHeight = (canvas.height * contentWidth) / canvas.width;
-
-  let heightLeft = imgHeight;
-  let position = margin;
-
-  pdf.addImage(imgData, "JPEG", margin, position, contentWidth, imgHeight);
-  heightLeft -= contentHeight;
-
-  while (heightLeft > 0) {
-    position = heightLeft - imgHeight + margin;
-    pdf.addPage();
-    pdf.addImage(imgData, "JPEG", margin, position, contentWidth, imgHeight);
-    heightLeft -= contentHeight;
+  const bytes = new Uint8Array(pdf.output("arraybuffer"));
+  if (bytes.byteLength < 100) {
+    throw new Error("PDF 파일이 비어 있습니다");
   }
 
-  return pdf.output("blob");
+  return new Blob([bytes], { type: "application/pdf" });
 };
 
-export const downloadBusinessPlanPdf = async (
+export const revokePdfDownloadOffer = (offer: PdfDownloadOffer): void => {
+  URL.revokeObjectURL(offer.url);
+};
+
+export const createBusinessPlanPdfOffer = async (
   document: BusinessPlanDocument,
   referenceImages: ReferenceImage[],
-  writable?: FileSystemWritableFileStream,
-): Promise<void> => {
+): Promise<PdfDownloadOffer> => {
   window.scrollTo(0, 0);
   const filename = buildExportFilename(document, "pdf");
   const { target, cleanup } = createBusinessPlanPdfHost(document, referenceImages);
@@ -817,13 +835,17 @@ export const downloadBusinessPlanPdf = async (
   try {
     await ensurePdfTargetReady(target);
     const blob = await renderBusinessPlanPdfBlob(target);
-    if (writable) {
-      await writable.write(blob);
-      await writable.close();
-      return;
-    }
-    triggerBlobDownload(blob, filename);
+    return {
+      blob,
+      filename,
+      url: URL.createObjectURL(blob),
+    };
   } finally {
     cleanup();
   }
 };
+
+export const downloadBusinessPlanPdf = async (
+  document: BusinessPlanDocument,
+  referenceImages: ReferenceImage[],
+): Promise<PdfDownloadOffer> => createBusinessPlanPdfOffer(document, referenceImages);
