@@ -620,99 +620,150 @@ export const downloadBusinessPlanDocx = async (
 };
 
 const PDF_EXPORT_OVERRIDES = `
-  .bp-pdf-export { font-family: "Noto Sans KR", sans-serif; color: #031635; line-height: 1.6; margin: 0; padding: 0; background: #ffffff; }
-  .bp-pdf-export .doc { max-width: none; width: 100%; margin: 0; padding: 0; border-radius: 0; box-shadow: none; background: #ffffff; }
-  .bp-pdf-export section.block:first-of-type { margin-top: 0; }
+  body { margin: 0; padding: 0; background: #ffffff; }
+  .doc { max-width: none; width: 794px; margin: 0; padding: 0; border-radius: 0; box-shadow: none; background: #ffffff; }
+  section.block:first-of-type { margin-top: 0; }
 `;
 
-/** PDF 캡처용 DOM — 화면 밖(-99999px) 배치 시 html2canvas가 1페이지 공백을 만드는 문제를 피함 */
-export const createBusinessPlanPdfTarget = (
+export const PDF_IFRAME_CLASS = "bp-pdf-iframe";
+
+const PDF_FONT_STACK =
+  '"Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+
+/** PDF 캡처용 HTML — HTML보내기와 동일 스타일 + 인쇄 최적화 */
+export const exportBusinessPlanHtmlForPdf = (
   document: BusinessPlanDocument,
   referenceImages: ReferenceImage[],
+): string =>
+  exportBusinessPlanHtml(document, referenceImages)
+    .replace(
+      /<link[^>]*fonts\.googleapis\.com[^>]*>\s*/i,
+      "",
+    )
+    .replace(
+      "</style>",
+      `${PDF_EXPORT_OVERRIDES}
+  body, .doc { font-family: ${PDF_FONT_STACK}; }
+</style>`,
+    );
+
+/** iframe에 전체 HTML을 렌더 — visibility:hidden 캡처로 빈 PDF가 나오는 문제 회피 */
+export const createBusinessPlanPdfIframe = (
+  html: string,
   ownerDocument: Document = window.document,
-): { root: HTMLElement; target: HTMLElement; cleanup: () => void } => {
-  const root = ownerDocument.createElement("div");
-  root.className = "bp-pdf-export";
-  root.setAttribute("aria-hidden", "true");
-  Object.assign(root.style, {
-    position: "fixed",
-    left: "0",
-    top: "0",
-    width: "794px",
-    overflow: "visible",
-    zIndex: "-1",
-    visibility: "hidden",
-    pointerEvents: "none",
-    background: "#ffffff",
+): Promise<{ iframe: HTMLIFrameElement; target: HTMLElement; cleanup: () => void }> =>
+  new Promise((resolve, reject) => {
+    const iframe = ownerDocument.createElement("iframe");
+    iframe.className = PDF_IFRAME_CLASS;
+    iframe.setAttribute("aria-hidden", "true");
+    Object.assign(iframe.style, {
+      position: "fixed",
+      left: "0",
+      top: "0",
+      width: "794px",
+      height: "100vh",
+      border: "none",
+      zIndex: "-1",
+      opacity: "1",
+      visibility: "visible",
+      pointerEvents: "none",
+      background: "#ffffff",
+    });
+
+    const cleanup = () => iframe.remove();
+
+    iframe.onload = () => {
+      void (async () => {
+        try {
+          const doc = iframe.contentDocument;
+          if (!doc) {
+            reject(new Error("PDF iframe document unavailable"));
+            return;
+          }
+          await doc.fonts?.ready;
+          await waitForPdfLayout();
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          const target = doc.querySelector("article.doc");
+          if (!(target instanceof HTMLElement)) {
+            reject(new Error("PDF export article not found"));
+            return;
+          }
+          resolve({ iframe, target, cleanup });
+        } catch (error) {
+          reject(error);
+        }
+      })();
+    };
+
+    iframe.onerror = () => reject(new Error("PDF iframe load failed"));
+    ownerDocument.body.appendChild(iframe);
+    iframe.srcdoc = html;
   });
-
-  const style = ownerDocument.createElement("style");
-  style.textContent = `${BASE_STYLES}${PDF_EXPORT_OVERRIDES}`;
-  root.appendChild(style);
-
-  const wrapper = ownerDocument.createElement("div");
-  wrapper.innerHTML = buildBusinessPlanArticleHtml(document, referenceImages);
-  const article = wrapper.querySelector("article.doc");
-  if (!article) {
-    throw new Error("PDF export article not found");
-  }
-  root.appendChild(article);
-
-  ownerDocument.body.appendChild(root);
-
-  return {
-    root,
-    target: article as HTMLElement,
-    cleanup: () => root.remove(),
-  };
-};
 
 export const waitForPdfLayout = (): Promise<void> =>
   new Promise((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   });
 
+export const renderBusinessPlanPdfBlob = async (target: HTMLElement): Promise<Blob> => {
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+    import("html2canvas"),
+    import("jspdf"),
+  ]);
+
+  const canvas = await html2canvas(target, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: "#ffffff",
+    logging: false,
+    scrollX: 0,
+    scrollY: 0,
+    width: target.scrollWidth,
+    height: target.scrollHeight,
+    windowWidth: target.scrollWidth,
+    windowHeight: target.scrollHeight,
+  });
+
+  if (canvas.width === 0 || canvas.height === 0) {
+    throw new Error("PDF canvas is empty");
+  }
+
+  const imgData = canvas.toDataURL("image/jpeg", 0.95);
+  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const margin = 10;
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const contentWidth = pageWidth - margin * 2;
+  const contentHeight = pageHeight - margin * 2;
+  const imgHeight = (canvas.height * contentWidth) / canvas.width;
+
+  let heightLeft = imgHeight;
+  let position = margin;
+
+  pdf.addImage(imgData, "JPEG", margin, position, contentWidth, imgHeight);
+  heightLeft -= contentHeight;
+
+  while (heightLeft > 0) {
+    position = heightLeft - imgHeight + margin;
+    pdf.addPage();
+    pdf.addImage(imgData, "JPEG", margin, position, contentWidth, imgHeight);
+    heightLeft -= contentHeight;
+  }
+
+  return pdf.output("blob");
+};
+
 export const downloadBusinessPlanPdf = async (
   document: BusinessPlanDocument,
   referenceImages: ReferenceImage[],
 ): Promise<void> => {
-  const { default: html2pdf } = await import("html2pdf.js");
-
   window.scrollTo(0, 0);
-  const { root, cleanup } = createBusinessPlanPdfTarget(document, referenceImages);
+  const html = exportBusinessPlanHtmlForPdf(document, referenceImages);
+  const { target, cleanup } = await createBusinessPlanPdfIframe(html);
 
   try {
-    await waitForPdfLayout();
-
-    await html2pdf()
-      .set({
-        margin: [10, 10, 10, 10],
-        filename: buildExportFilename(document, "pdf"),
-        image: { type: "jpeg", quality: 0.95 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          scrollX: 0,
-          scrollY: 0,
-          onclone: (clonedDoc: Document) => {
-            const exportRoot = clonedDoc.querySelector(".bp-pdf-export");
-            if (exportRoot instanceof HTMLElement) {
-              exportRoot.style.position = "static";
-              exportRoot.style.visibility = "visible";
-              exportRoot.style.left = "auto";
-              exportRoot.style.top = "auto";
-              exportRoot.style.zIndex = "auto";
-              exportRoot.style.width = "794px";
-              exportRoot.style.margin = "0";
-              exportRoot.style.padding = "0";
-            }
-          },
-        },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      })
-      .from(root)
-      .save();
+    const blob = await renderBusinessPlanPdfBlob(target);
+    triggerBlobDownload(blob, buildExportFilename(document, "pdf"));
   } finally {
     cleanup();
   }
