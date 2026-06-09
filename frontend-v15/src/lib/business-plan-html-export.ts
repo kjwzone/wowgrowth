@@ -666,11 +666,11 @@ export const createBusinessPlanPdfHost = (
   host.setAttribute("aria-hidden", "true");
   Object.assign(host.style, {
     position: "fixed",
-    left: "0",
+    left: "-10000px",
     top: "0",
     width: "794px",
     overflow: "visible",
-    zIndex: "2147483646",
+    zIndex: "-1",
     opacity: "1",
     visibility: "visible",
     pointerEvents: "none",
@@ -732,6 +732,25 @@ export type PdfDownloadOffer = {
   blob: Blob;
   filename: string;
   url: string;
+};
+
+/** html2canvas 클론에서 화면 밖·숨김 스타일을 캡처 가능 상태로 복원 */
+const revealClonedCaptureNode = (element: HTMLElement): void => {
+  let node: HTMLElement | null = element;
+  while (node) {
+    node.style.visibility = "visible";
+    node.style.opacity = "1";
+    node.style.overflow = "visible";
+    node.style.pointerEvents = "none";
+    if (node.classList.contains(PDF_HOST_CLASS)) {
+      node.style.position = "static";
+      node.style.left = "auto";
+      node.style.top = "auto";
+      node.style.width = "794px";
+      node.style.zIndex = "auto";
+    }
+    node = node.parentElement;
+  }
 };
 
 const PDF_CAPTURE_BLOCKS = (target: HTMLElement): HTMLElement[] => {
@@ -796,6 +815,11 @@ export const renderBusinessPlanPdfBlob = async (target: HTMLElement): Promise<Bl
       scrollX: 0,
       scrollY: 0,
       foreignObjectRendering: false,
+      onclone: (_clonedDoc, clonedElement) => {
+        if (clonedElement instanceof HTMLElement) {
+          revealClonedCaptureNode(clonedElement);
+        }
+      },
     });
 
     if (canvas.width === 0 || canvas.height === 0) {

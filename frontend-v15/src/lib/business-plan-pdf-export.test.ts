@@ -28,13 +28,13 @@ describe("business-plan-pdf-export", () => {
     expect(html).toContain("<article class=\"doc\">");
   });
 
-  it("creates visible article host in main document", () => {
+  it("creates off-screen article host in main document", () => {
     const documentModel = mergeDraftToDocument(createEmptyDraft("prog-001"));
     const { host, target, cleanup } = createBusinessPlanPdfHost(documentModel, []);
 
     expect(host.className).toBe(PDF_HOST_CLASS);
-    expect(host.style.visibility).toBe("visible");
-    expect(host.style.opacity).toBe("1");
+    expect(host.style.left).toBe("-10000px");
+    expect(host.style.zIndex).toBe("-1");
     expect(host.querySelector("style")?.textContent).toContain(PDF_HOST_CLASS);
     expect(target.className).toBe("doc");
     expect(target.textContent).toContain(documentModel.programTitle);
