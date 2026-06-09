@@ -10,7 +10,6 @@ import { AdminDataTable } from "@/components/admin/AdminDataTable";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import { AdminTabBar, type AdminTabItem } from "@/components/admin/AdminTabBar";
-import { FailedJobList } from "@/components/admin/FailedJobList";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { adminDashboardApi } from "@/lib/api";
@@ -358,14 +357,6 @@ export default function AdminDashboardPage() {
               rows={details.businessPlans}
               emptyMessage="생성된 AI 문서가 없습니다."
             />
-          </AdminPanel>
-
-          <AdminPanel
-            title="최근 실패한 AI 작업"
-            description="최근 10건의 실패 작업"
-            variant="warn"
-          >
-            <FailedJobList jobs={summary.recentFailedJobs} />
           </AdminPanel>
         </div>
       ) : null}
