@@ -532,7 +532,10 @@ const BASE_STYLES = `
   .ref-card a { color: #0040e0; }
 `;
 
-export const exportBusinessPlanHtml = (
+export const BUSINESS_PLAN_EXPORT_STYLES = BASE_STYLES;
+
+/** 본문(article) 마크업만 생성 — HTML/DOCX/PDF 내보내기에서 공유 */
+export const buildBusinessPlanArticleHtml = (
   document: BusinessPlanDocument,
   referenceImages: ReferenceImage[],
 ): string => {
@@ -546,7 +549,18 @@ export const exportBusinessPlanHtml = (
     )
     .join("\n");
 
-  return `<!DOCTYPE html>
+  return `<article class="doc">
+    <h1>${escapeHtml(document.programTitle)}</h1>
+    <p class="meta">사업계획서 통합 문서 · 전체 완성도 ${document.overallCompleteness}% · WOW Growth AI</p>
+    ${sectionsHtml}
+    ${renderReferenceImages(referenceImages)}
+  </article>`;
+};
+
+export const exportBusinessPlanHtml = (
+  document: BusinessPlanDocument,
+  referenceImages: ReferenceImage[],
+): string => `<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
@@ -556,14 +570,23 @@ export const exportBusinessPlanHtml = (
   <style>${BASE_STYLES}</style>
 </head>
 <body>
-  <article class="doc">
-    <h1>${escapeHtml(document.programTitle)}</h1>
-    <p class="meta">사업계획서 통합 문서 · 전체 완성도 ${document.overallCompleteness}% · WOW Growth AI</p>
-    ${sectionsHtml}
-    ${renderReferenceImages(referenceImages)}
-  </article>
+  ${buildBusinessPlanArticleHtml(document, referenceImages)}
 </body>
 </html>`;
+
+const buildExportFilename = (
+  document: BusinessPlanDocument,
+  extension: string,
+): string =>
+  `사업계획서-${document.programTitle.slice(0, 30).replace(/\s+/g, "-")}.${extension}`;
+
+const triggerBlobDownload = (blob: Blob, filename: string): void => {
+  const url = URL.createObjectURL(blob);
+  const anchor = window.document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 };
 
 export const downloadBusinessPlanHtml = (
@@ -571,11 +594,61 @@ export const downloadBusinessPlanHtml = (
   referenceImages: ReferenceImage[],
 ): void => {
   const html = exportBusinessPlanHtml(document, referenceImages);
-  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = window.document.createElement("a");
-  anchor.href = url;
-  anchor.download = `사업계획서-${document.programTitle.slice(0, 30).replace(/\s+/g, "-")}.html`;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  triggerBlobDownload(
+    new Blob([html], { type: "text/html;charset=utf-8" }),
+    buildExportFilename(document, "html"),
+  );
+};
+
+export const downloadBusinessPlanDocx = async (
+  document: BusinessPlanDocument,
+  referenceImages: ReferenceImage[],
+): Promise<void> => {
+  const html = exportBusinessPlanHtml(document, referenceImages);
+  const { asBlob } = await import("html-docx-js-typescript");
+  const result = await asBlob(html, {
+    orientation: "portrait",
+    margins: { top: 720, right: 720, bottom: 720, left: 720 },
+  });
+  const blob =
+    result instanceof Blob
+      ? result
+      : new Blob([result as BlobPart], {
+          type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        });
+  triggerBlobDownload(blob, buildExportFilename(document, "docx"));
+};
+
+export const downloadBusinessPlanPdf = async (
+  document: BusinessPlanDocument,
+  referenceImages: ReferenceImage[],
+): Promise<void> => {
+  const { default: html2pdf } = await import("html2pdf.js");
+
+  const container = window.document.createElement("div");
+  container.style.position = "fixed";
+  container.style.left = "-99999px";
+  container.style.top = "0";
+  container.style.width = "920px";
+  container.style.background = "#ffffff";
+  container.innerHTML = `<style>${BASE_STYLES}</style><div style="background:#fff;padding:0">${buildBusinessPlanArticleHtml(
+    document,
+    referenceImages,
+  )}</div>`;
+  window.document.body.appendChild(container);
+
+  try {
+    await html2pdf()
+      .set({
+        margin: [10, 10, 10, 10],
+        filename: buildExportFilename(document, "pdf"),
+        image: { type: "jpeg", quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      })
+      .from(container)
+      .save();
+  } finally {
+    window.document.body.removeChild(container);
+  }
 };

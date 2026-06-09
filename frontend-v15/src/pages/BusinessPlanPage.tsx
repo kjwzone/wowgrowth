@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Download, LayoutList, Pencil, Send } from "lucide-react";
+import { ChevronDown, Download, LayoutList, Loader2, Pencil, Send } from "lucide-react";
 import { PageHeader, SectionCard } from "@/components/ui/PageHeader";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { AiAgentPanel, type AiGeneratingTask } from "@/components/ui/AiAgentPanel";
@@ -9,7 +9,11 @@ import { BusinessPlanPreview } from "@/components/ui/BusinessPlanPreview";
 import { SubmissionResultPanel } from "@/components/ui/SubmissionResultPanel";
 import { BUSINESS_PLAN_SKILL_LABELS } from "@/lib/business-plan-skill";
 import { mergeDraftToDocument } from "@/lib/business-plan-document";
-import { downloadBusinessPlanHtml } from "@/lib/business-plan-html-export";
+import {
+  downloadBusinessPlanDocx,
+  downloadBusinessPlanHtml,
+  downloadBusinessPlanPdf,
+} from "@/lib/business-plan-html-export";
 import { companyProfile } from "@/data/company";
 import { selectReferenceImages } from "@/lib/business-plan-reference-images";
 import type { RemediationAction } from "@/lib/business-plan-submission-remediation";
@@ -33,6 +37,11 @@ export default function BusinessPlanPage() {
   );
   const [viewMode, setViewMode] = useState<EditorViewMode>("sections");
   const editorRef = useRef<HTMLDivElement>(null);
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const [downloadingFormat, setDownloadingFormat] = useState<
+    "html" | "docx" | "pdf" | null
+  >(null);
+  const downloadMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setLoadError(null);
@@ -125,6 +134,45 @@ export default function BusinessPlanPage() {
     [draft],
   );
 
+  useEffect(() => {
+    if (!downloadMenuOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        downloadMenuRef.current &&
+        !downloadMenuRef.current.contains(event.target as Node)
+      ) {
+        setDownloadMenuOpen(false);
+      }
+    };
+    window.document.addEventListener("mousedown", handleClickOutside);
+    return () =>
+      window.document.removeEventListener("mousedown", handleClickOutside);
+  }, [downloadMenuOpen]);
+
+  const handleDownload = async (format: "html" | "docx" | "pdf") => {
+    if (!mergedDocument || downloadingFormat) return;
+    setDownloadMenuOpen(false);
+    const references = selectReferenceImages(
+      mergedDocument.programTitle,
+      companyProfile.name,
+      companyProfile.product,
+    );
+    try {
+      setDownloadingFormat(format);
+      if (format === "html") {
+        downloadBusinessPlanHtml(mergedDocument, references);
+      } else if (format === "docx") {
+        await downloadBusinessPlanDocx(mergedDocument, references);
+      } else {
+        await downloadBusinessPlanPdf(mergedDocument, references);
+      }
+    } catch (error) {
+      console.error("사업계획서 다운로드 실패", error);
+    } finally {
+      setDownloadingFormat(null);
+    }
+  };
+
   const jumpToSectionEdit = (sectionId: string) => {
     setActiveId(sectionId);
     setViewMode("sections");
@@ -176,26 +224,53 @@ export default function BusinessPlanPage() {
         description={draft.programTitle}
         action={
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (mergedDocument) {
-                  downloadBusinessPlanHtml(
-                    mergedDocument,
-                    selectReferenceImages(
-                      mergedDocument.programTitle,
-                      companyProfile.name,
-                      companyProfile.product,
-                    ),
-                  );
-                }
-              }}
-              disabled={!mergedDocument}
-              className="inline-flex items-center gap-2 rounded-lg border border-outline-variant px-4 py-2 text-sm hover:bg-surface-container disabled:opacity-60"
-            >
-              <Download className="h-4 w-4" />
-              다운로드
-            </button>
+            <div className="relative" ref={downloadMenuRef}>
+              <button
+                type="button"
+                onClick={() => setDownloadMenuOpen((open) => !open)}
+                disabled={!mergedDocument || downloadingFormat !== null}
+                aria-haspopup="menu"
+                aria-expanded={downloadMenuOpen}
+                className="inline-flex items-center gap-2 rounded-lg border border-outline-variant px-4 py-2 text-sm hover:bg-surface-container disabled:opacity-60"
+              >
+                {downloadingFormat ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                {downloadingFormat
+                  ? `${downloadingFormat.toUpperCase()} 생성 중...`
+                  : "다운로드"}
+                <ChevronDown className="h-4 w-4" />
+              </button>
+              {downloadMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 z-20 mt-2 w-44 overflow-hidden rounded-lg border border-outline-variant bg-surface shadow-lg"
+                >
+                  {(
+                    [
+                      { format: "html", label: "HTML 다운로드", hint: "웹 문서" },
+                      { format: "docx", label: "DOCX 다운로드", hint: "MS Word" },
+                      { format: "pdf", label: "PDF 다운로드", hint: "인쇄용" },
+                    ] as const
+                  ).map((item) => (
+                    <button
+                      key={item.format}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => void handleDownload(item.format)}
+                      className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm hover:bg-surface-container"
+                    >
+                      <span>{item.label}</span>
+                      <span className="text-xs text-on-surface-variant">
+                        {item.hint}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => void prepareSubmission()}
