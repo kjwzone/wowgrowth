@@ -619,36 +619,101 @@ export const downloadBusinessPlanDocx = async (
   triggerBlobDownload(blob, buildExportFilename(document, "docx"));
 };
 
+const PDF_EXPORT_OVERRIDES = `
+  .bp-pdf-export { font-family: "Noto Sans KR", sans-serif; color: #031635; line-height: 1.6; margin: 0; padding: 0; background: #ffffff; }
+  .bp-pdf-export .doc { max-width: none; width: 100%; margin: 0; padding: 0; border-radius: 0; box-shadow: none; background: #ffffff; }
+  .bp-pdf-export section.block:first-of-type { margin-top: 0; }
+`;
+
+/** PDF 캡처용 DOM — 화면 밖(-99999px) 배치 시 html2canvas가 1페이지 공백을 만드는 문제를 피함 */
+export const createBusinessPlanPdfTarget = (
+  document: BusinessPlanDocument,
+  referenceImages: ReferenceImage[],
+  ownerDocument: Document = window.document,
+): { root: HTMLElement; target: HTMLElement; cleanup: () => void } => {
+  const root = ownerDocument.createElement("div");
+  root.className = "bp-pdf-export";
+  root.setAttribute("aria-hidden", "true");
+  Object.assign(root.style, {
+    position: "fixed",
+    left: "0",
+    top: "0",
+    width: "794px",
+    overflow: "visible",
+    zIndex: "-1",
+    visibility: "hidden",
+    pointerEvents: "none",
+    background: "#ffffff",
+  });
+
+  const style = ownerDocument.createElement("style");
+  style.textContent = `${BASE_STYLES}${PDF_EXPORT_OVERRIDES}`;
+  root.appendChild(style);
+
+  const wrapper = ownerDocument.createElement("div");
+  wrapper.innerHTML = buildBusinessPlanArticleHtml(document, referenceImages);
+  const article = wrapper.querySelector("article.doc");
+  if (!article) {
+    throw new Error("PDF export article not found");
+  }
+  root.appendChild(article);
+
+  ownerDocument.body.appendChild(root);
+
+  return {
+    root,
+    target: article as HTMLElement,
+    cleanup: () => root.remove(),
+  };
+};
+
+export const waitForPdfLayout = (): Promise<void> =>
+  new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+
 export const downloadBusinessPlanPdf = async (
   document: BusinessPlanDocument,
   referenceImages: ReferenceImage[],
 ): Promise<void> => {
   const { default: html2pdf } = await import("html2pdf.js");
 
-  const container = window.document.createElement("div");
-  container.style.position = "fixed";
-  container.style.left = "-99999px";
-  container.style.top = "0";
-  container.style.width = "920px";
-  container.style.background = "#ffffff";
-  container.innerHTML = `<style>${BASE_STYLES}</style><div style="background:#fff;padding:0">${buildBusinessPlanArticleHtml(
-    document,
-    referenceImages,
-  )}</div>`;
-  window.document.body.appendChild(container);
+  window.scrollTo(0, 0);
+  const { root, cleanup } = createBusinessPlanPdfTarget(document, referenceImages);
 
   try {
+    await waitForPdfLayout();
+
     await html2pdf()
       .set({
         margin: [10, 10, 10, 10],
         filename: buildExportFilename(document, "pdf"),
         image: { type: "jpeg", quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          scrollX: 0,
+          scrollY: 0,
+          onclone: (clonedDoc: Document) => {
+            const exportRoot = clonedDoc.querySelector(".bp-pdf-export");
+            if (exportRoot instanceof HTMLElement) {
+              exportRoot.style.position = "static";
+              exportRoot.style.visibility = "visible";
+              exportRoot.style.left = "auto";
+              exportRoot.style.top = "auto";
+              exportRoot.style.zIndex = "auto";
+              exportRoot.style.width = "794px";
+              exportRoot.style.margin = "0";
+              exportRoot.style.padding = "0";
+            }
+          },
+        },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
       })
-      .from(container)
+      .from(root)
       .save();
   } finally {
-    window.document.body.removeChild(container);
+    cleanup();
   }
 };
