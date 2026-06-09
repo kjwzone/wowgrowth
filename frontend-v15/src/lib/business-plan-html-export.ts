@@ -585,8 +585,14 @@ const triggerBlobDownload = (blob: Blob, filename: string): void => {
   const anchor = window.document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
+  anchor.rel = "noopener";
+  anchor.style.display = "none";
+  window.document.body.appendChild(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => {
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }, 2000);
 };
 
 export const downloadBusinessPlanHtml = (
@@ -625,7 +631,7 @@ const PDF_EXPORT_OVERRIDES = `
   section.block:first-of-type { margin-top: 0; }
 `;
 
-export const PDF_IFRAME_CLASS = "bp-pdf-iframe";
+export const PDF_HOST_CLASS = "bp-pdf-host";
 
 const PDF_FONT_STACK =
   '"Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
@@ -647,63 +653,112 @@ export const exportBusinessPlanHtmlForPdf = (
 </style>`,
     );
 
-/** iframe에 전체 HTML을 렌더 — visibility:hidden 캡처로 빈 PDF가 나오는 문제 회피 */
-export const createBusinessPlanPdfIframe = (
-  html: string,
+/** 메인 문서에 렌더 — iframe 교차 문서 캡처 실패·onload 미호출 방지 */
+export const createBusinessPlanPdfHost = (
+  document: BusinessPlanDocument,
+  referenceImages: ReferenceImage[],
   ownerDocument: Document = window.document,
-): Promise<{ iframe: HTMLIFrameElement; target: HTMLElement; cleanup: () => void }> =>
-  new Promise((resolve, reject) => {
-    const iframe = ownerDocument.createElement("iframe");
-    iframe.className = PDF_IFRAME_CLASS;
-    iframe.setAttribute("aria-hidden", "true");
-    Object.assign(iframe.style, {
-      position: "fixed",
-      left: "0",
-      top: "0",
-      width: "794px",
-      height: "100vh",
-      border: "none",
-      zIndex: "-1",
-      opacity: "1",
-      visibility: "visible",
-      pointerEvents: "none",
-      background: "#ffffff",
-    });
-
-    const cleanup = () => iframe.remove();
-
-    iframe.onload = () => {
-      void (async () => {
-        try {
-          const doc = iframe.contentDocument;
-          if (!doc) {
-            reject(new Error("PDF iframe document unavailable"));
-            return;
-          }
-          await doc.fonts?.ready;
-          await waitForPdfLayout();
-          await new Promise((resolve) => setTimeout(resolve, 300));
-          const target = doc.querySelector("article.doc");
-          if (!(target instanceof HTMLElement)) {
-            reject(new Error("PDF export article not found"));
-            return;
-          }
-          resolve({ iframe, target, cleanup });
-        } catch (error) {
-          reject(error);
-        }
-      })();
-    };
-
-    iframe.onerror = () => reject(new Error("PDF iframe load failed"));
-    ownerDocument.body.appendChild(iframe);
-    iframe.srcdoc = html;
+): { host: HTMLElement; target: HTMLElement; cleanup: () => void } => {
+  const host = ownerDocument.createElement("div");
+  host.className = PDF_HOST_CLASS;
+  host.setAttribute("aria-hidden", "true");
+  Object.assign(host.style, {
+    position: "fixed",
+    left: "0",
+    top: "0",
+    width: "794px",
+    overflow: "visible",
+    zIndex: "-1",
+    opacity: "1",
+    visibility: "visible",
+    pointerEvents: "none",
+    background: "#ffffff",
   });
+
+  const style = ownerDocument.createElement("style");
+  style.textContent = `${BASE_STYLES}${PDF_EXPORT_OVERRIDES}
+  .${PDF_HOST_CLASS}, .${PDF_HOST_CLASS} .doc { font-family: ${PDF_FONT_STACK}; }`;
+  host.appendChild(style);
+
+  const wrapper = ownerDocument.createElement("div");
+  wrapper.innerHTML = buildBusinessPlanArticleHtml(document, referenceImages);
+  const article = wrapper.querySelector("article.doc");
+  if (!(article instanceof HTMLElement)) {
+    throw new Error("PDF export article not found");
+  }
+  host.appendChild(article);
+  ownerDocument.body.appendChild(host);
+
+  return {
+    host,
+    target: article,
+    cleanup: () => host.remove(),
+  };
+};
 
 export const waitForPdfLayout = (): Promise<void> =>
   new Promise((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   });
+
+const pdfTargetHasLayout = (target: HTMLElement): boolean => {
+  const rect = target.getBoundingClientRect();
+  return (
+    target.scrollWidth > 0 ||
+    target.scrollHeight > 0 ||
+    rect.width > 0 ||
+    rect.height > 0
+  );
+};
+
+export const ensurePdfTargetReady = async (target: HTMLElement): Promise<void> => {
+  await waitForPdfLayout();
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (pdfTargetHasLayout(target)) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  if (!target.textContent?.trim()) {
+    throw new Error("PDF target has no content");
+  }
+};
+
+export const getBusinessPlanExportFilename = buildExportFilename;
+
+type FilePickerWindow = Window & {
+  showSaveFilePicker?: (options: {
+    suggestedName?: string;
+    types?: Array<{ description: string; accept: Record<string, string[]> }>;
+  }) => Promise<FileSystemFileHandle>;
+};
+
+export type PdfWritablePickResult =
+  | { kind: "writable"; stream: FileSystemWritableFileStream }
+  | { kind: "fallback" }
+  | { kind: "cancelled" };
+
+/** Chrome/Edge: 사용자 클릭 직후 저장 위치를 선택해 비동기 생성 후에도 저장 가능 */
+export const pickBusinessPlanPdfWritable = async (
+  filename: string,
+): Promise<PdfWritablePickResult> => {
+  const pickerWindow = window as FilePickerWindow;
+  if (typeof pickerWindow.showSaveFilePicker !== "function") {
+    return { kind: "fallback" };
+  }
+  try {
+    const handle = await pickerWindow.showSaveFilePicker({
+      suggestedName: filename,
+      types: [{ description: "PDF 문서", accept: { "application/pdf": [".pdf"] } }],
+    });
+    return { kind: "writable", stream: await handle.createWritable() };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return { kind: "cancelled" };
+    }
+    throw error;
+  }
+};
 
 export const renderBusinessPlanPdfBlob = async (target: HTMLElement): Promise<Blob> => {
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
@@ -712,23 +767,20 @@ export const renderBusinessPlanPdfBlob = async (target: HTMLElement): Promise<Bl
   ]);
 
   const canvas = await html2canvas(target, {
-    scale: 2,
+    scale: 1.5,
     useCORS: true,
     backgroundColor: "#ffffff",
     logging: false,
     scrollX: 0,
-    scrollY: 0,
-    width: target.scrollWidth,
-    height: target.scrollHeight,
-    windowWidth: target.scrollWidth,
-    windowHeight: target.scrollHeight,
+    scrollY: -window.scrollY,
+    foreignObjectRendering: false,
   });
 
   if (canvas.width === 0 || canvas.height === 0) {
     throw new Error("PDF canvas is empty");
   }
 
-  const imgData = canvas.toDataURL("image/jpeg", 0.95);
+  const imgData = canvas.toDataURL("image/jpeg", 0.92);
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
   const margin = 10;
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -756,14 +808,21 @@ export const renderBusinessPlanPdfBlob = async (target: HTMLElement): Promise<Bl
 export const downloadBusinessPlanPdf = async (
   document: BusinessPlanDocument,
   referenceImages: ReferenceImage[],
+  writable?: FileSystemWritableFileStream,
 ): Promise<void> => {
   window.scrollTo(0, 0);
-  const html = exportBusinessPlanHtmlForPdf(document, referenceImages);
-  const { target, cleanup } = await createBusinessPlanPdfIframe(html);
+  const filename = buildExportFilename(document, "pdf");
+  const { target, cleanup } = createBusinessPlanPdfHost(document, referenceImages);
 
   try {
+    await ensurePdfTargetReady(target);
     const blob = await renderBusinessPlanPdfBlob(target);
-    triggerBlobDownload(blob, buildExportFilename(document, "pdf"));
+    if (writable) {
+      await writable.write(blob);
+      await writable.close();
+      return;
+    }
+    triggerBlobDownload(blob, filename);
   } finally {
     cleanup();
   }

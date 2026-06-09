@@ -5,15 +5,16 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createEmptyDraft } from "@/lib/business-plan-generator";
 import { mergeDraftToDocument } from "@/lib/business-plan-document";
 import {
-  createBusinessPlanPdfIframe,
+  createBusinessPlanPdfHost,
+  ensurePdfTargetReady,
   exportBusinessPlanHtmlForPdf,
-  PDF_IFRAME_CLASS,
+  PDF_HOST_CLASS,
   waitForPdfLayout,
 } from "@/lib/business-plan-html-export";
 
 describe("business-plan-pdf-export", () => {
   afterEach(() => {
-    document.querySelectorAll(`.${PDF_IFRAME_CLASS}`).forEach((node) => node.remove());
+    document.querySelectorAll(`.${PDF_HOST_CLASS}`).forEach((node) => node.remove());
   });
 
   it("injects PDF-specific styles into export HTML", () => {
@@ -27,19 +28,29 @@ describe("business-plan-pdf-export", () => {
     expect(html).toContain("<article class=\"doc\">");
   });
 
-  it("loads visible article content inside iframe", async () => {
+  it("creates visible article host in main document", () => {
     const documentModel = mergeDraftToDocument(createEmptyDraft("prog-001"));
-    const html = exportBusinessPlanHtmlForPdf(documentModel, []);
-    const { iframe, target, cleanup } = await createBusinessPlanPdfIframe(html);
+    const { host, target, cleanup } = createBusinessPlanPdfHost(documentModel, []);
 
-    expect(iframe.className).toBe(PDF_IFRAME_CLASS);
-    expect(iframe.style.visibility).toBe("visible");
-    expect(iframe.style.opacity).toBe("1");
+    expect(host.className).toBe(PDF_HOST_CLASS);
+    expect(host.style.visibility).toBe("visible");
+    expect(host.style.opacity).toBe("1");
+    expect(host.querySelector("style")?.textContent).toContain(PDF_HOST_CLASS);
     expect(target.className).toBe("doc");
     expect(target.textContent).toContain(documentModel.programTitle);
 
     cleanup();
-    expect(document.body.contains(iframe)).toBe(false);
+    expect(document.body.contains(host)).toBe(false);
+  });
+
+  it("waits until target has content", async () => {
+    const documentModel = mergeDraftToDocument(createEmptyDraft("prog-001"));
+    const { target, cleanup } = createBusinessPlanPdfHost(documentModel, []);
+
+    await ensurePdfTargetReady(target);
+    expect(target.textContent).toContain(documentModel.programTitle);
+
+    cleanup();
   });
 
   it("waits for layout frames", async () => {

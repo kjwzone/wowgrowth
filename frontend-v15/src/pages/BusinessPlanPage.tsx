@@ -13,6 +13,8 @@ import {
   downloadBusinessPlanDocx,
   downloadBusinessPlanHtml,
   downloadBusinessPlanPdf,
+  getBusinessPlanExportFilename,
+  pickBusinessPlanPdfWritable,
 } from "@/lib/business-plan-html-export";
 import { companyProfile } from "@/data/company";
 import { selectReferenceImages } from "@/lib/business-plan-reference-images";
@@ -41,6 +43,7 @@ export default function BusinessPlanPage() {
   const [downloadingFormat, setDownloadingFormat] = useState<
     "html" | "docx" | "pdf" | null
   >(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const downloadMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -152,11 +155,26 @@ export default function BusinessPlanPage() {
   const handleDownload = async (format: "html" | "docx" | "pdf") => {
     if (!mergedDocument || downloadingFormat) return;
     setDownloadMenuOpen(false);
+    setDownloadError(null);
     const references = selectReferenceImages(
       mergedDocument.programTitle,
       companyProfile.name,
       companyProfile.product,
     );
+
+    let pdfWritable: FileSystemWritableFileStream | undefined;
+    if (format === "pdf") {
+      const pick = await pickBusinessPlanPdfWritable(
+        getBusinessPlanExportFilename(mergedDocument, "pdf"),
+      );
+      if (pick.kind === "cancelled") {
+        return;
+      }
+      if (pick.kind === "writable") {
+        pdfWritable = pick.stream;
+      }
+    }
+
     try {
       setDownloadingFormat(format);
       if (format === "html") {
@@ -164,10 +182,15 @@ export default function BusinessPlanPage() {
       } else if (format === "docx") {
         await downloadBusinessPlanDocx(mergedDocument, references);
       } else {
-        await downloadBusinessPlanPdf(mergedDocument, references);
+        await downloadBusinessPlanPdf(mergedDocument, references, pdfWritable);
       }
     } catch (error) {
       console.error("사업계획서 다운로드 실패", error);
+      setDownloadError(
+        error instanceof Error
+          ? error.message
+          : "파일 다운로드에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+      );
     } finally {
       setDownloadingFormat(null);
     }
@@ -223,7 +246,8 @@ export default function BusinessPlanPage() {
         title="사업계획서 자동작성"
         description={draft.programTitle}
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex gap-2">
             <div className="relative" ref={downloadMenuRef}>
               <button
                 type="button"
@@ -298,6 +322,12 @@ export default function BusinessPlanPage() {
                     ? "다시 검증"
                     : "제출 준비"}
             </button>
+            </div>
+            {downloadError ? (
+              <p className="max-w-sm rounded-lg bg-error/10 px-3 py-2 text-right text-xs text-error">
+                {downloadError}
+              </p>
+            ) : null}
           </div>
         }
       />
