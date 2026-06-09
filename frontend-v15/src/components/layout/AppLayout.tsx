@@ -1,11 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
+import { isAppDataBootstrapped, syncAppDataOnLogin } from "@/lib/api";
+import { useSession } from "@/lib/use-session";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { cn } from "@/lib/utils";
 
 export const AppLayout = () => {
+  const { isLoggedIn } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    if (isLoggedIn && !isAppDataBootstrapped()) {
+      void syncAppDataOnLogin();
+    }
+  }, [isLoggedIn]);
   const closeMobile = () => setMobileOpen(false);
 
   return (

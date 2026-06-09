@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BarChart3, Lock, ShieldCheck } from "lucide-react";
-import { authApi } from "@/lib/api";
+import { authApi, syncAppDataOnLogin } from "@/lib/api";
 import { getAppHomePath } from "@/lib/auth-routes";
 import { persistSession, useSession } from "@/lib/use-session";
 
@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,10 +32,13 @@ export default function LoginPage() {
           ? await authApi.login(email, password)
           : await authApi.signup(email, password, name);
       persistSession(session);
+      setSyncing(true);
+      await syncAppDataOnLogin();
       navigate(getAppHomePath(session));
     } catch {
       setError("로그인에 실패했습니다. 다시 시도해 주세요.");
     } finally {
+      setSyncing(false);
       setPending(false);
     }
   };
@@ -141,7 +145,13 @@ export default function LoginPage() {
               disabled={pending}
               className="w-full rounded-lg bg-secondary py-3 font-medium text-on-secondary hover:bg-secondary-container disabled:opacity-60"
             >
-              {pending ? "처리 중..." : mode === "login" ? "로그인" : "가입하기"}
+              {pending
+                ? syncing
+                  ? "데이터 연동 중..."
+                  : "처리 중..."
+                : mode === "login"
+                  ? "로그인"
+                  : "가입하기"}
             </button>
           </form>
 

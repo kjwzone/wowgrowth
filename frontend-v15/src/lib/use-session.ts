@@ -1,4 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
+import { clearAppDataBootstrap } from "@/lib/app-data-bootstrap";
 import { clearSession, saveSession, SESSION_STORAGE_KEY } from "@/lib/auth-session";
 import type { UserSession } from "@/types";
 
@@ -59,6 +60,7 @@ export const persistSession = (session: UserSession): void => {
 
 export const removeSession = (): void => {
   clearSession();
+  clearAppDataBootstrap();
   notifySessionChange();
 };
 

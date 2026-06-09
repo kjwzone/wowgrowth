@@ -20,6 +20,16 @@ import {
   normalizeCompanyProfile,
   persistProfile,
 } from "@/lib/company-profile-model";
+import {
+  bootstrapAppData,
+  clearAppDataBootstrap,
+  getBootstrappedMatching,
+  getBootstrappedPrograms,
+  getBootstrappedSnapshot,
+  getBootstrappedSource,
+  getBootstrapStatusMessage,
+  isAppDataBootstrapped,
+} from "@/lib/app-data-bootstrap";
 import { buildDashboardSnapshot, type DashboardSnapshot } from "@/lib/dashboard-data";
 import { businessPlanAiClient, isAiFallbackError } from "@/lib/business-plan-ai-client";
 import {
@@ -76,6 +86,18 @@ export const programApi = {
     q?: string;
     category?: string;
   }): Promise<ProgramListResult> => {
+    const bootstrappedPrograms = getBootstrappedPrograms();
+    if (
+      isAppDataBootstrapped() &&
+      getBootstrappedSource() === "bizinfo" &&
+      bootstrappedPrograms &&
+      !params?.q &&
+      !params?.category
+    ) {
+      bizinfoProgramCache = bootstrappedPrograms;
+      return { items: bootstrappedPrograms, source: "bizinfo" };
+    }
+
     const remote = await fetchBizinfoProgramsFromApi({
       q: params?.q,
       category: params?.category,
@@ -141,6 +163,18 @@ const MATCHING_BIZINFO_PAGE_SIZE = 50;
 
 export const matchingApi = {
   list: async (): Promise<MatchingListResult> => {
+    const bootstrappedMatching = getBootstrappedMatching();
+    if (isAppDataBootstrapped() && bootstrappedMatching) {
+      const source = getBootstrappedSource();
+      return {
+        items: bootstrappedMatching,
+        source,
+        message: source === "mock" ? getBootstrapStatusMessage() : undefined,
+        summary: buildMatchingSummary(bootstrappedMatching),
+        programsScanned: getBootstrappedPrograms()?.length ?? bootstrappedMatching.length,
+      };
+    }
+
     const company = await companyApi.get();
     const remote = await fetchBizinfoProgramsFromApi({
       pageSize: MATCHING_BIZINFO_PAGE_SIZE,
@@ -327,6 +361,11 @@ export const businessPlanApi = {
 
 export const dashboardApi = {
   getSnapshot: async (): Promise<DashboardSnapshot> => {
+    const bootstrappedSnapshot = getBootstrappedSnapshot();
+    if (isAppDataBootstrapped() && bootstrappedSnapshot) {
+      return bootstrappedSnapshot;
+    }
+
     const [company, matchingResult, plan, programResult] = await Promise.all([
       companyApi.get(),
       matchingApi.list(),
@@ -387,7 +426,16 @@ export const authApi = {
   },
 };
 
+/** 로그인 직후 기업마당·매칭·대시보드 데이터 연동 */
+export const syncAppDataOnLogin = async (): Promise<void> => {
+  const plan = await businessPlanApi.get();
+  await bootstrapAppData(plan);
+};
+
+export { clearAppDataBootstrap, isAppDataBootstrapped };
+
 /** 테스트용 캐시 리셋 */
 export const resetBusinessPlanCache = (): void => {
   draftCache = businessPlanDraft;
+  clearAppDataBootstrap();
 };
